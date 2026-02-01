@@ -171,6 +171,11 @@ cython_debug/
 # PyCharm
 .idea/
 
+# Eclipse
+**/.classpath
+**/.project
+**/.settings
+
 # Visual Studio Code
  .vscode/
 
