@@ -66,7 +66,7 @@ backend in browser. One of the stretch goals of this project is to eventually pr
 with the same functionality as above-mentioned Python library.
 
 
-## Server
+## Server Side
 
 Server side of the architecture targets Kubernetes cluster and tries to leverage its extensibility.]
 Also, it relies on Istio mesh with Envoy pattern for routing of traffic through the cluster.
@@ -98,8 +98,32 @@ language as Rust.
 
 The broker can host one or more games each with one or more clients.
 
+### Server-side Game Server
+
+This infrastructure does not prejudice against game server sitting in the same server side architecture
+next to broker hubs. That would make game logic acting faster and potentially allow realtime games, too.
+
+
 ## Deployment
 
 This is how it is meant to be deployed in Kubernetes cluster:
 
 ![client-server](architecture-1.png)
+
+## Future Development
+
+This game server is currently **not**:
+
+### Realtime Game Server
+
+Current infrastructure is geared against not time critical stream of messages between game server and client. 
+HTTP(s) streaming is not reliable enough for fast updates, although with fast, modern infrastructures it is almost
+possible. Having game server next to the broker (or even on the broker pod itself!) could cut latency to half removing
+game server to broker traffic over the internet.
+
+### One Game
+
+This is infrastructure and a framework for easily creating and playing multi-user turn based games - and not
+single game. Idea is that python code on 'main' client would drive turn based games, while framework helps
+'setting-up' or 'creation' of game, connecting users, etc...
+
