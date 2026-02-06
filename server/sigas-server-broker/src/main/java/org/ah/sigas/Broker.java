@@ -95,45 +95,39 @@ public class Broker {
         connectionNum++;
         if (DEBUG) { System.out.println("Got new connection handler for channel: " + clientChannel + ", connection #: " + connectionNum); }
 
-        key.attach(new HTTPRequestHandler(connectionNum));
+        key.attach(new HTTPRequestHandler(this, connectionNum));
 
     }
 
     private void read(SelectionKey key) throws IOException {
         SocketChannel clientChannel = (SocketChannel) key.channel();
 
-        HTTPRequestHandler handler = (HTTPRequestHandler)key.attachment();
+        Handler handler = (Handler)key.attachment();
         if (handler == null) {
             throw new IOException("Read: Handler is missing for the channel: " + key.channel());
         }
 
-        if (handler.read(clientChannel)) {
-            key.interestOps(SelectionKey.OP_WRITE);
-        }
+        handler.read(key, clientChannel);
     }
 
     private void write(SelectionKey key) throws IOException {
-        HTTPRequestHandler handler = (HTTPRequestHandler)key.attachment();
+        Handler handler = (Handler)key.attachment();
         if (handler == null) {
             throw new IOException("Write: Handler is missing for the channel: " + key.channel());
         }
 
         SocketChannel clientChannel = (SocketChannel) key.channel();
-        handler.write(clientChannel);
-
-        if (handler.isCompleted()) {
-            closeChannel(key);
-        }
+        handler.write(key, clientChannel);
     }
 
-    private void closeChannel(SelectionKey key) {
+    public void closeChannel(SelectionKey key) {
         connectionNum--;
 
         SocketChannel channel = (SocketChannel) key.channel();
         key.cancel();
         if (DEBUG) { System.out.println("Closing connection for channel: " + channel + ", active connections: " + connectionNum); }
 
-        HTTPRequestHandler handler = (HTTPRequestHandler)key.attachment();
+        Handler handler = (Handler)key.attachment();
         if (handler != null) {
             handler.close();
         }
