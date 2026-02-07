@@ -1,39 +1,58 @@
-package org.ah.sigas;
+package org.ah.sigas.broker;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
+
+import org.ah.sigas.broker.game.Game;
 
 public class Broker {
 
     public static boolean INFO = true;
     public static boolean DEBUG = true;
 
-    private int port;
+    private int serverPort;
+    private int internalPort;
+    private URI hubURI;
 
     private ServerSocketChannel serverChannel;
+    private ServerSocketChannel internalChannel;
     private Selector selector;
 
     private int connectionNum;
 
+    private Map<String, Game> games = new HashMap<>();
 
-    public Broker(int port) {
-        this.port = port;
+    public Broker(int serverPort, int internalPort, URI hubURI) {
+        this.serverPort = serverPort;
+        this.internalPort = internalPort;
+        this.hubURI = hubURI;
     }
 
     private void init() throws IOException {
         selector = Selector.open();
         serverChannel = ServerSocketChannel.open();
         serverChannel.configureBlocking(false);
-        serverChannel.socket().bind(new InetSocketAddress((InetAddress)null, port));
+        serverChannel.socket().bind(new InetSocketAddress((InetAddress)null, serverPort));
         serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+
+        internalChannel = ServerSocketChannel.open();
+        internalChannel.configureBlocking(false);
+        internalChannel.socket().bind(new InetSocketAddress((InetAddress)null, internalPort));
+        internalChannel.register(selector, SelectionKey.OP_ACCEPT);
     }
+
+    public Map<String, Game> getGames() { return games; }
+    public URI getHubURI() { return hubURI; }
 
     public void loop() {
         try {
@@ -57,7 +76,7 @@ public class Broker {
                     try {
                         if (key.isValid()) {
                             if (key.isAcceptable()) {
-                                accept();
+                                accept(key);
                             } else if (key.isReadable()) {
                                 read(key);
                             } else if (key.isWritable()) {
@@ -79,23 +98,38 @@ public class Broker {
         }
     }
 
+    private void accept(SelectionKey selectedKey) throws IOException {
+        if (selectedKey.channel() == serverChannel) {
+            SocketChannel clientChannel = serverChannel.accept();
+            if (clientChannel == null) {
+                System.err.println("Server channel cannot be accepted");
+                return;
+            }
 
+            clientChannel.configureBlocking(false);
+            SelectionKey key = clientChannel.register(selector, SelectionKey.OP_READ); // Expecting other side to send some data first
+            if (DEBUG) { System.out.println("Accepting channel " + clientChannel); }
 
-    private void accept() throws IOException {
-        SocketChannel clientChannel = serverChannel.accept();
-        if (clientChannel == null) {
-            System.err.println("Server channel cannot be accepted");
-            return;
+            connectionNum++;
+            if (DEBUG) { System.out.println("Got new connection handler for channel: " + clientChannel + ", connection #: " + connectionNum); }
+
+            key.attach(new HTTPServerRequestHandler(this));
+        } else {
+            SocketChannel clientChannel = internalChannel.accept();
+            if (clientChannel == null) {
+                System.err.println("Internal channel cannot be accepted");
+                return;
+            }
+
+            clientChannel.configureBlocking(false);
+            SelectionKey key = clientChannel.register(selector, SelectionKey.OP_READ); // Expecting other side to send some data first
+            if (DEBUG) { System.out.println("Accepting channel " + clientChannel); }
+
+            connectionNum++;
+            if (DEBUG) { System.out.println("Got new connection handler for channel: " + clientChannel + ", connection #: " + connectionNum); }
+
+            key.attach(new HTTPInternalRequestHandler(this));
         }
-
-        clientChannel.configureBlocking(false);
-        SelectionKey key = clientChannel.register(selector, SelectionKey.OP_READ); // Expecting other side to send some data first
-        if (DEBUG) { System.out.println("Accepting channel " + clientChannel); }
-
-        connectionNum++;
-        if (DEBUG) { System.out.println("Got new connection handler for channel: " + clientChannel + ", connection #: " + connectionNum); }
-
-        key.attach(new HTTPRequestHandler(this, connectionNum));
 
     }
 

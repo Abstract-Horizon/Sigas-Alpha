@@ -1,4 +1,4 @@
-package org.ah.sigas;
+package org.ah.sigas.broker;
 
 import java.io.IOException;
 import java.nio.channels.ReadableByteChannel;

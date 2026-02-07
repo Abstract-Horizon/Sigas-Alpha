@@ -1,4 +1,4 @@
-package org.ah.sigas;
+package org.ah.sigas.broker;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -8,7 +8,7 @@ import java.nio.channels.WritableByteChannel;
 import java.util.HashMap;
 import java.util.Map;
 
-public class HTTPResponseHandler implements Handler {
+public class SimpleHTTPResponseHandler implements Handler {
 
 
     private ByteBuffer buffer = ByteBuffer.allocate(16384);
@@ -19,7 +19,6 @@ public class HTTPResponseHandler implements Handler {
 
     private Broker broker;
 
-    private int connectionNo;
     private String protocol = "HTTP/1.1";
     private int responseCode;
     private String responseMsg;
@@ -31,9 +30,12 @@ public class HTTPResponseHandler implements Handler {
     private boolean headersSent = false;
 
 
-    public HTTPResponseHandler(Broker broker, int connectionNo, int responseCode, String responseMsg, Map<String, String> headers, byte[] content) {
+    public SimpleHTTPResponseHandler(
+            Broker broker, int responseCode, String responseMsg,
+            Map<String, String> headers,
+            byte[] content) {
+
         this.broker = broker;
-        this.connectionNo = connectionNo;
         this.responseCode = responseCode;
         this.responseMsg = responseMsg;
         this.headers = headers;
@@ -45,6 +47,7 @@ public class HTTPResponseHandler implements Handler {
             this.headers.put("Content-Length", Integer.toString(content.length));
         }
     }
+
 
     @Override
     public void read(SelectionKey key, ReadableByteChannel channel) throws IOException {

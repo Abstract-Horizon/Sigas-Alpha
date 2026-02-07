@@ -1,6 +1,8 @@
-package org.ah.sigas;
+package org.ah.sigas.broker;
 
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SelectionKey;
@@ -8,24 +10,23 @@ import java.nio.channels.WritableByteChannel;
 import java.util.HashMap;
 import java.util.Map;
 
-public class HTTPRequestHandler implements Handler {
+public abstract class HTTPRequestHandler implements Handler {
 
+    private static byte[] EMPTY = new byte[0];
 
-    private ByteBuffer buffer = ByteBuffer.allocate(16384);
+    protected ByteBuffer buffer = ByteBuffer.allocate(16384);
 
-    private Broker broker;
+    protected Broker broker;
 
-    private int connectionNo;
+    protected String method;
+    protected String path;
+    protected String protocol;
 
-    private String method;
-    private String path;
-    private String protocol;
+    protected Map<String, String> headers = new HashMap<String, String>();
 
-    private Map<String, String> headers = new HashMap<String, String>();
-
-    private byte[] bytes;
-    private int pos = 0;
-    private int max = 0;
+    protected byte[] bytes;
+    protected int pos = 0;
+    protected int max = 0;
 
     // Scanner vars
     private int ss = 0;
@@ -37,11 +38,9 @@ public class HTTPRequestHandler implements Handler {
     private StringBuilder tokenValue = new StringBuilder();
     private String previousHeader;
 
-    public HTTPRequestHandler(Broker broker, int connectionNo) {
+    public HTTPRequestHandler(Broker broker) {
         this.broker = broker;
-        this.connectionNo = connectionNo;
     }
-
 
     private void parse() {
         while (pos < max && !parsingComplete) {
@@ -91,7 +90,7 @@ public class HTTPRequestHandler implements Handler {
                             parsingError = true;
                             return;
                         }
-                        path = tokenValue.substring(firstSpace, secondSpace);
+                        path = tokenValue.substring(firstSpace + 1, secondSpace);
                         protocol = tokenValue.substring(secondSpace + 1);
                     } else {
                         if (tokenValue.charAt(0) == ' ') {
@@ -114,7 +113,7 @@ public class HTTPRequestHandler implements Handler {
                         String headerKey = tokenValue.substring(0, i);
                         previousHeader = headerKey;
                         String headerValue = tokenValue.substring(i + 2).trim();
-                        headers.put(headerKey, headerValue);
+                        headers.put(headerKey.toLowerCase(), headerValue);
                     }
                 } finally {
                     tokenValue.delete(0, tokenValue.length());
@@ -140,29 +139,31 @@ public class HTTPRequestHandler implements Handler {
 
             buffer.clear();
 
-            read = channel.read(buffer);
+            if (!parsingComplete) {
+                read = channel.read(buffer);
+            }
         }
 
         if (parsingError) {
-            System.out.println("Got malformed request");
+            System.err.println("Closing connection as got malformed request; '" + method + " " + path + " " + protocol);
             broker.closeChannel(key);
             return;
         }
 
         if (parsingComplete) {
-            System.out.println("Method: '" + method + "' on path '" + path + "' with protocol '" + protocol + "'");
-            System.out.println("Headers:");
-            for (Map.Entry<String, String> header : headers.entrySet()) {
-                System.out.println("  " + header.getKey() + ": " + header.getValue());
+            if (Broker.DEBUG) { System.out.println("Received request: method '" + method + "' on path '" + path + "' with protocol '" + protocol + "'"); }
+            if (Broker.DEBUG) {
+                System.out.println("Headers:");
+                for (Map.Entry<String, String> header : headers.entrySet()) {
+                    System.out.println("  " + header.getKey() + ": " + header.getValue());
+                }
             }
 
-            key.attach(new HTTPResponseHandler(broker, connectionNo, 200, "OK",
-                new HashMap<String, String>() {{
-                    put("Content-Type", "text/plain");
-                }}, new byte[0]));
-            key.interestOps(SelectionKey.OP_WRITE);
+            processRequest(key, channel);
         }
     }
+
+    protected abstract void processRequest(SelectionKey key, ReadableByteChannel channel) throws IOException;
 
     @Override
     public void write(SelectionKey key, WritableByteChannel channel) throws IOException {
@@ -173,4 +174,37 @@ public class HTTPRequestHandler implements Handler {
     public void close() {
     }
 
+    protected void handleError(SelectionKey key, String errorString) {
+        System.err.println(errorString);
+        createSimpleResponse(key, 400, "ERROR", errorString + "\n");
+    }
+
+    protected void handleError(SelectionKey key, Exception e) {
+        StringWriter error = new StringWriter();
+        PrintWriter printWriter = new PrintWriter(error);
+        printWriter.println("Got exception " + e.getMessage());
+        printWriter.println();
+        e.printStackTrace(printWriter);
+        String errorString = error.toString();
+        System.err.print(errorString);
+
+        createSimpleResponse(key, 400, "ERROR", errorString);
+    }
+
+    protected void createSimpleResponse(SelectionKey key, int responseCode, String responseMessage) {
+        createSimpleResponse(key, responseCode, responseMessage, null);
+    }
+
+    protected void createSimpleResponse(SelectionKey key, int responseCode, String responseMessage, String body) {
+        key.attach(new SimpleHTTPResponseHandler(
+                broker, responseCode, responseMessage,
+                new HashMap<String, String>() {{
+                    put("Content-Type", "text/plain");
+                    if (body != null) {
+                        put("Content-Length", Integer.toString(body.length()));
+                    }
+                }},
+                body != null ? body.getBytes() : EMPTY));
+        key.interestOps(SelectionKey.OP_WRITE);
+    }
 }
