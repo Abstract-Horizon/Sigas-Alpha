@@ -5,11 +5,18 @@ import java.util.List;
 
 public class Game {
 
+    public static enum State {
+        CREATED,
+        RUNNING,
+    }
+
     private String gameId;
     private List<Client> clients = new ArrayList<>();
 
     private final long createdTimestamp = System.currentTimeMillis();
     private long lastActivity;
+
+    private State state = State.CREATED;
 
     public Game(String gameId) {
         this.gameId = gameId;
@@ -25,4 +32,10 @@ public class Game {
     public void touch() { lastActivity = System.currentTimeMillis(); }
 
     public long getLastActivity() { return lastActivity; }
+
+    public State getState() { return state; }
+
+    public void setState(State state) { this.state = state; }
+
+    public List<Client> getClients() { return clients; }
 }
