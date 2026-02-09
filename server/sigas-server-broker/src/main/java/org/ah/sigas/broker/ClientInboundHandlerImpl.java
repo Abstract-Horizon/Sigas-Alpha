@@ -23,6 +23,7 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
     private int msgLen = 0;
     private boolean error = false;
 
+    private byte[] messageType = new byte[4];
     private byte[] messageBytes;
     private int ptr = 0;
 
@@ -53,7 +54,7 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
         chunkLen -= l;
 
         if (ptr >= msgLen) {
-            client.receivedMessage(messageBytes, msgLen);
+            client.receivedMessage(new String(messageType), messageBytes);
             return true;
         }
         return false;
@@ -62,39 +63,46 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
     private void parseMessage() {
         while (pos < max && chunkLen > 0) {
             byte b = bytes[pos];
-            if (ms != 4) {
+            if (ms != 8) {
                 pos++;
                 chunkLen--;
             }
 
             if (ms == 0) {
-                ptr = 0;
-                msgLen = b;
+                messageType[0] = b;
                 ms = 1;
             } else if (ms == 1) {
-                msgLen = msgLen * 8 + b;
+                messageType[1] = b;
                 ms = 2;
             } else if (ms == 2) {
-                msgLen = msgLen * 8 + b;
+                messageType[2] = b;
                 ms = 3;
             } else if (ms == 3) {
+                messageType[3] = b;
+                ms = 4;
+            } else if (ms == 4) {
+                ptr = 0;
+                msgLen = b;
+                ms = 5;
+            } else if (ms == 5) {
+                msgLen = msgLen * 8 + b;
+                ms = 6;
+            } else if (ms == 6) {
+                msgLen = msgLen * 8 + b;
+                ms = 7;
+            } else if (ms == 7) {
                 msgLen = msgLen * 8 + b;
 
-                msgLen -= 4; // for just read size
+                messageBytes = new byte[msgLen];
 
-                if (messageBytes == null || messageBytes.length < msgLen) {
-                    messageBytes = new byte[msgLen];
-                }
                 if (readMessage()) {
                     ms = 0;
                 } else {
-                    ms = 4;
+                    ms = 8;
                 }
-            } else if (ms == 4) {
+            } else if (ms == 8) {
                 if (readMessage()) {
                     ms = 0;
-                } else {
-                    ms = 4;
                 }
             }
         }

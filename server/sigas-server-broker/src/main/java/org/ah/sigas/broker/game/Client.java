@@ -4,6 +4,7 @@ import java.util.LinkedList;
 
 import org.ah.sigas.broker.Broker;
 import org.ah.sigas.broker.ClientHandler;
+import org.ah.sigas.broker.message.Message;
 
 public class Client {
 
@@ -15,7 +16,7 @@ public class Client {
     private ClientHandler clientInboundHandler;
     private ClientHandler clientOutboundHandler;
 
-    private LinkedList <byte[]> receivedMessages = new LinkedList<>();
+    private LinkedList <Message> receivedMessages = new LinkedList<>();
 
     public Client(Game game, String token, boolean master) {
         this.game = game;
@@ -38,13 +39,10 @@ public class Client {
 
     public void touch() { lastActivity = System.currentTimeMillis(); }
 
-    public LinkedList<byte[]> getReceivedMessages() { return receivedMessages; }
+    public LinkedList<Message> getReceivedMessages() { return receivedMessages; }
 
-    public void receivedMessage(byte[] msgBytes, int len) {
-        if (Broker.TRACE) { System.out.println("Received message: \n" + new String(msgBytes, 0, len)); }
-        byte[] msg = new byte[msgBytes.length + 4];
-        msg[3] = (byte)msg.length;
-        System.arraycopy(msgBytes, 0, msg, 4, msgBytes.length);
-        receivedMessages.add(msg);
+    public void receivedMessage(String type, byte[] body) {
+        if (Broker.TRACE) { System.out.println("Received message '" + type + "': \n" + new String(body)); }
+        receivedMessages.add(new Message(type, body));
     }
 }

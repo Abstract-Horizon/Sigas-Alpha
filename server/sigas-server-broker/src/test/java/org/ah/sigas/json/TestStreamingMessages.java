@@ -24,6 +24,7 @@ import java.util.stream.Stream;
 import org.ah.sigas.broker.Broker;
 import org.ah.sigas.broker.game.Client;
 import org.ah.sigas.broker.game.Game;
+import org.ah.sigas.broker.message.Message;
 import org.junit.Test;
 
 public class TestStreamingMessages {
@@ -105,14 +106,14 @@ public class TestStreamingMessages {
                 out.flush();
 
                 ByteBuffer heloBuffer = ByteBuffer.allocate(8);
-                heloBuffer.putInt(8);
                 heloBuffer.put("HELO".getBytes());
+                heloBuffer.putInt(0);
                 sendMessage(out, heloBuffer);
                 outputStream.flush();
 
                 ByteBuffer pingBuffer = ByteBuffer.allocate(19);
-                pingBuffer.putInt(19);
                 pingBuffer.put("PING".getBytes());
+                pingBuffer.putInt(11);
                 pingBuffer.putLong(System.currentTimeMillis());
                 pingBuffer.put("END".getBytes());
                 sendMessage(out, pingBuffer);
@@ -125,9 +126,19 @@ public class TestStreamingMessages {
 
                 Client client = game.getClients().get(1);
 
-                assertArrayEquals(heloBuffer.array(), client.getReceivedMessages().get(0));
-                assertArrayEquals(pingBuffer.array(), client.getReceivedMessages().get(1));
+                Message msg1 = client.getReceivedMessages().get(0);
+                Message msg2 = client.getReceivedMessages().get(1);
 
+                assertEquals("HELO", msg1.getType());
+                assertEquals(0, msg1.getBytes().length);
+                assertEquals("PING", msg2.getType());
+                byte[] pingMsg = new byte[11];
+
+                pingBuffer.flip();
+                pingBuffer.getLong();
+                pingBuffer.get(pingMsg, 0, 11);
+
+                assertArrayEquals(pingMsg, msg2.getBytes());
             }
 
             System.out.println("Finished");
