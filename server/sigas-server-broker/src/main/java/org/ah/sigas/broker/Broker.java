@@ -32,6 +32,8 @@ public class Broker {
 
     private Map<String, Game> games = new HashMap<>();
 
+    private boolean doStop = false;
+
     public Broker(int serverPort, int internalPort, URI hubURI) {
         this.serverPort = serverPort;
         this.internalPort = internalPort;
@@ -63,10 +65,10 @@ public class Broker {
             System.exit(1);
         }
 
-        while (true) {
+        while (!doStop) {
             try {
 
-                selector.select();
+                selector.select(200);
                 Set<SelectionKey> keys = selector.selectedKeys();
 
                 Iterator<SelectionKey> keyIterator = keys.iterator();
@@ -89,13 +91,20 @@ public class Broker {
                         closeChannel(key);
                     }
                 }
-
-                Thread.sleep(100);
             } catch (Exception e) {
                 System.err.println("Got exception " + e.getMessage());
                 e.printStackTrace();
             }
         }
+        for (SelectionKey key : selector.keys()) {
+            try {
+                key.channel().close();
+            } catch (IOException ignore) { }
+        }
+    }
+
+    public void stop() {
+        doStop = true;
     }
 
     private void accept(SelectionKey selectedKey) throws IOException {

@@ -29,8 +29,6 @@ public class Game {
 
     public void addClient(Client client) { clients.add(client); }
 
-    public void touch() { lastActivity = System.currentTimeMillis(); }
-
     public long getLastActivity() { return lastActivity; }
 
     public State getState() { return state; }
@@ -38,4 +36,8 @@ public class Game {
     public void setState(State state) { this.state = state; }
 
     public List<Client> getClients() { return clients; }
+
+
+    public void touch() { lastActivity = System.currentTimeMillis(); }
+
 }

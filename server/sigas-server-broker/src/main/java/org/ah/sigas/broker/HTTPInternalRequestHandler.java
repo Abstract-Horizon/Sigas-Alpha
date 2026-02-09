@@ -103,7 +103,7 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
 
             Game game = new Game(gameId);
             broker.getGames().put(gameId, game);
-            Client client = new Client(masterToken, true);
+            Client client = new Client(game, masterToken, true);
             game.addClient(client);
 
             if (Broker.INFO) { System.out.println("Game " + gameId + " created"); }
@@ -159,7 +159,7 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
                 }
             }
 
-            Client client = new Client(token, false);
+            Client client = new Client(game, token, false);
             game.addClient(client);
 
             if (Broker.INFO) { System.out.println("Added client to game " + gameId); }
