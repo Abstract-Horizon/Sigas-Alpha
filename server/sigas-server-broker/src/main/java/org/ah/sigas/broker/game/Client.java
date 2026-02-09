@@ -43,6 +43,6 @@ public class Client {
 
     public void receivedMessage(String type, byte[] body) {
         if (Broker.TRACE) { System.out.println("Received message '" + type + "': \n" + new String(body)); }
-        receivedMessages.add(new Message(type, body));
+        receivedMessages.add(Message.createMessage(type, body));
     }
 }

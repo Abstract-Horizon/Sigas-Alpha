@@ -130,7 +130,7 @@ public class TestStreamingMessages {
                 Message msg2 = client.getReceivedMessages().get(1);
 
                 assertEquals("HELO", msg1.getType());
-                assertEquals(0, msg1.getBytes().length);
+                assertEquals(0, msg1.getBody().length);
                 assertEquals("PING", msg2.getType());
                 byte[] pingMsg = new byte[11];
 
@@ -138,7 +138,7 @@ public class TestStreamingMessages {
                 pingBuffer.getLong();
                 pingBuffer.get(pingMsg, 0, 11);
 
-                assertArrayEquals(pingMsg, msg2.getBytes());
+                assertArrayEquals(pingMsg, msg2.getBody());
             }
 
             System.out.println("Finished");
