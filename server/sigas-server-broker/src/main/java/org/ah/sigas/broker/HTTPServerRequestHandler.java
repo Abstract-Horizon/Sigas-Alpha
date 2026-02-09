@@ -100,8 +100,6 @@ public class HTTPServerRequestHandler extends HTTPRequestHandler {
                         key.attach(outboundHandler);
                         outboundHandler.open(key);
                     }
-
-                    createSimpleResponse(key, 200, "OK", "OK to proceed with method " + method + "\n");
                     return;
                 }
             }

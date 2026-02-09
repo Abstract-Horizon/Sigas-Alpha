@@ -1,5 +1,6 @@
 package org.ah.sigas.json;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
@@ -104,28 +105,28 @@ public class TestStreamingMessages {
                 out.flush();
 
                 ByteBuffer heloBuffer = ByteBuffer.allocate(8);
-                heloBuffer.putInt(4);
+                heloBuffer.putInt(8);
                 heloBuffer.put("HELO".getBytes());
                 sendMessage(out, heloBuffer);
                 outputStream.flush();
 
                 ByteBuffer pingBuffer = ByteBuffer.allocate(19);
-                pingBuffer.putInt(15);
+                pingBuffer.putInt(19);
                 pingBuffer.put("PING".getBytes());
                 pingBuffer.putLong(System.currentTimeMillis());
                 pingBuffer.put("END".getBytes());
                 sendMessage(out, pingBuffer);
+                outputStream.flush();
 
 
-                Thread.sleep(10);
+                Thread.sleep(100);
 
                 Game game = broker.getGames().get(gameId);
 
                 Client client = game.getClients().get(1);
 
-                for (byte[] msg : client.getReceivedMessages()) {
-                    assertEquals(heloBuffer.array(), msg);
-                }
+                assertArrayEquals(heloBuffer.array(), client.getReceivedMessages().get(0));
+                assertArrayEquals(pingBuffer.array(), client.getReceivedMessages().get(1));
 
             }
 

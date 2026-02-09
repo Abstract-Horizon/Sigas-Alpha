@@ -44,9 +44,17 @@ public class BaseClientHandler implements ClientHandler {
         throw new UnsupportedOperationException();
     }
 
-    protected void errorPrintln(String msg) {
+    protected void println(String msg) {
+        println(msg, false);
+    }
+
+    protected void println(String msg, boolean error) {
         String prefix = client.getGame().getGameId() + ":" + client.getToken() + " ";
 
-        System.err.println(prefix + msg);
+        if (error) {
+            System.err.println(prefix + msg);
+        } else {
+            System.out.println(prefix + msg);
+        }
     }
 }

@@ -19,6 +19,7 @@ public class Broker {
 
     public static boolean INFO = true;
     public static boolean DEBUG = true;
+    public static boolean TRACE = true;
 
     private int serverPort;
     private int internalPort;

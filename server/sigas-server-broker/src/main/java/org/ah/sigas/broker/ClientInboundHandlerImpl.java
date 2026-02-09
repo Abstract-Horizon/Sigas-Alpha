@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SelectionKey;
-import java.nio.channels.WritableByteChannel;
-import java.util.Map;
 
 import org.ah.sigas.broker.game.Client;
 
@@ -82,6 +80,8 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
             } else if (ms == 3) {
                 msgLen = msgLen * 8 + b;
 
+                msgLen -= 4; // for just read size
+
                 if (messageBytes == null || messageBytes.length < msgLen) {
                     messageBytes = new byte[msgLen];
                 }
@@ -113,11 +113,12 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
                 } else if (b == 13) {
                     cs = 1;
                 } else  {
-                    if (Broker.DEBUG) { errorPrintln("Wrong input in Chunked-Encoding size, expected '0-9A-F' or CR; got '" + Integer.toString(b) + "'"); }
+                    if (Broker.DEBUG) { println("Wrong input in Chunked-Encoding size, expected '0-9A-F' or CR; got '" + Integer.toString(b) + "'", true); }
                     error = true;
                 }
             } else if (cs == 1) {
                 if (b == 10) {
+                    if (Broker.TRACE) { println("Got chunk of " + chunkLen + " bytes"); }
                     parseMessage();
                     if (chunkLen == 0) {
                         cs = 3;
@@ -125,7 +126,7 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
                         cs = 2;
                     }
                 } else {
-                    if (Broker.DEBUG) { errorPrintln("Wrong input after CR in Chunked-Encoding size; expected LF and got '" + Integer.toString(b) + "'"); }
+                    if (Broker.DEBUG) { println("Wrong input after CR in Chunked-Encoding size; expected LF and got '" + Integer.toString(b) + "'", true); }
                     error = true;
                 }
             } else if (cs == 2) {
@@ -138,14 +139,15 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
                 if (b == 13) {
                     cs = 4;
                 } else {
-                    if (Broker.DEBUG) { errorPrintln("Expected chunk end (LF) but got '" + Integer.toString(b) + "'"); }
+                    if (Broker.DEBUG) { println("Expected chunk end (LF) but got '" + Integer.toString(b) + "'", true); }
                     error = true;
                 }
             } else if (cs == 4) {
                 if (b == 10) {
+                    if (Broker.TRACE) { println("Completed chunk"); }
                     cs = 0;
                 } else {
-                    if (Broker.DEBUG) { errorPrintln("Expected chunk (CR) end but got '" + Integer.toString(b) + "'"); }
+                    if (Broker.DEBUG) { println("Expected chunk (CR) end but got '" + Integer.toString(b) + "'", true); }
                     error = true;
                 }
             }

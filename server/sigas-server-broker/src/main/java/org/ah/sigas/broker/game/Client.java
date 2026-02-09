@@ -41,7 +41,10 @@ public class Client {
     public LinkedList<byte[]> getReceivedMessages() { return receivedMessages; }
 
     public void receivedMessage(byte[] msgBytes, int len) {
-        if (Broker.DEBUG) { System.out.println("Received message: \n" + new String(msgBytes, 0, len)); }
-        receivedMessages.add(msgBytes);
+        if (Broker.TRACE) { System.out.println("Received message: \n" + new String(msgBytes, 0, len)); }
+        byte[] msg = new byte[msgBytes.length + 4];
+        msg[3] = (byte)msg.length;
+        System.arraycopy(msgBytes, 0, msg, 4, msgBytes.length);
+        receivedMessages.add(msg);
     }
 }
