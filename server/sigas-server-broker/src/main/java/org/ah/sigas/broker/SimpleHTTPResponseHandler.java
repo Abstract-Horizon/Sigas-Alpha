@@ -13,9 +13,9 @@ public class SimpleHTTPResponseHandler implements Handler {
 
     private ByteBuffer buffer = ByteBuffer.allocate(16384);
 
-    private byte SPACE = 32;
-    private byte[] CRLF = new byte[] {13, 10};
-    private byte[] HEADER_SEPARATOR = new byte[] {':', ' '};
+    public static byte[] CRLF = new byte[] {13, 10};
+    private static byte SPACE = 32;
+    private static byte[] HEADER_SEPARATOR = new byte[] {':', ' '};
 
     private Broker broker;
 

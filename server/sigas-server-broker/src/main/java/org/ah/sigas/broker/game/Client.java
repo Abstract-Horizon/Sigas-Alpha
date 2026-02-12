@@ -1,9 +1,11 @@
 package org.ah.sigas.broker.game;
 
+import java.io.IOException;
 import java.util.LinkedList;
 
 import org.ah.sigas.broker.Broker;
 import org.ah.sigas.broker.ClientHandler;
+import org.ah.sigas.broker.ClientOutboundHandlerImpl;
 import org.ah.sigas.broker.message.Message;
 
 public class Client {
@@ -16,7 +18,8 @@ public class Client {
     private ClientHandler clientInboundHandler;
     private ClientHandler clientOutboundHandler;
 
-    private LinkedList <Message> receivedMessages = new LinkedList<>();
+    // private LinkedList <Message> receivedMessages = new LinkedList<>();
+    private LinkedList <Message> messagesToSend = new LinkedList<>();
 
     public Client(Game game, String token, boolean master) {
         this.game = game;
@@ -39,10 +42,31 @@ public class Client {
 
     public void touch() { lastActivity = System.currentTimeMillis(); }
 
-    public LinkedList<Message> getReceivedMessages() { return receivedMessages; }
+    public LinkedList<Message> getMessagesToSend() { return messagesToSend; }
 
-    public void receivedMessage(String type, byte[] body) {
-        if (Broker.TRACE) { System.out.println("Received message '" + type + "': \n" + new String(body)); }
-        receivedMessages.add(Message.createMessage(type, body));
+    public void receivedMessage(String type, byte[] body) throws IOException {
+        if (Broker.TRACE) { log("Received message '" + type + "': \n" + new String(body)); }
+        game.receivedMessage(this, Message.createMessage(type, body));
+    }
+
+    public void sendMessage(Message message) throws IOException {
+        if (clientOutboundHandler != null) {
+            messagesToSend.add(message);
+            ((ClientOutboundHandlerImpl)clientOutboundHandler).clientHasMessages();
+        }
+    }
+
+    public void log(String msg) {
+        log(msg, false);
+    }
+
+    public void log(String msg, boolean error) {
+        String prefix = game.getGameId() + ":" + token + " ";
+
+        if (error) {
+            System.err.println(prefix + msg);
+        } else {
+            System.out.println(prefix + msg);
+        }
     }
 }

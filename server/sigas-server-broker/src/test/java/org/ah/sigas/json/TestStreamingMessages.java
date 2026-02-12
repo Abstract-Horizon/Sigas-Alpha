@@ -4,6 +4,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -67,7 +68,8 @@ public class TestStreamingMessages {
                     "/game/" + gameId,
                     """
                     {
-                        "master_token": "1234"
+                        "master_token": "1234",
+                        "client_id": 1
                     }
                     """).getResponseCode());
 
@@ -78,7 +80,8 @@ public class TestStreamingMessages {
                     "/game/" + gameId + "/client",
                     """
                     {
-                        "token": "1235"
+                        "token": "1235",
+                        "client_id": 2
                     }
                     """).getResponseCode());
 
@@ -89,66 +92,70 @@ public class TestStreamingMessages {
                     "/game/" + gameId + "/start",
                     "").getResponseCode());
 
-            try (
-                    Socket socket = new Socket("127.0.0.1", serverPort);
-                    OutputStream outputStream = socket.getOutputStream();
-                    PrintStream out = new PrintStream(outputStream);
-                ) {
+            URL url = new URI("http://localhost:" + serverPort + "/game/" + gameId + "/" + masterToken).toURL();
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.connect();
+            try(InputStream masterInputStream = connection.getInputStream()) {
+
+                try (
+                        Socket socket = new Socket("127.0.0.1", serverPort);
+                        OutputStream outputStream = socket.getOutputStream();
+                        PrintStream out = new PrintStream(outputStream);
+                    ) {
 
 
-                out.print("POST /game/" + gameId + "/" + clientToken + " HTTP/1.1" + CRLF);
-                out.print("Host: localhost:" + serverPort + CRLF);
-                out.print("Transfer-Encoding: chunked" + CRLF);
-                out.print("Connection: keep-alive" + CRLF);
-                out.print("User-Agent: MineTest" + CRLF);
-                out.print("Accept: */*" + CRLF);
-                out.print(CRLF);
-                out.flush();
+                    out.print("POST /game/" + gameId + "/" + clientToken + " HTTP/1.1" + CRLF);
+                    out.print("Host: localhost:" + serverPort + CRLF);
+                    out.print("Transfer-Encoding: chunked" + CRLF);
+                    out.print("Connection: keep-alive" + CRLF);
+                    out.print("User-Agent: MineTest" + CRLF);
+                    out.print("Accept: */*" + CRLF);
+                    out.print(CRLF);
+                    out.flush();
 
-                ByteBuffer heloBuffer = ByteBuffer.allocate(8);
-                heloBuffer.put("HELO".getBytes());
-                heloBuffer.putInt(0);
-                sendMessage(out, heloBuffer);
-                outputStream.flush();
+                    ByteBuffer heloBuffer = ByteBuffer.allocate(10);
+                    heloBuffer.put("HELO".getBytes());
+                    heloBuffer.putInt(2);
+                    heloBuffer.putShort((short)0);
+                    sendMessage(out, heloBuffer);
+                    outputStream.flush();
 
-                ByteBuffer pingBuffer = ByteBuffer.allocate(19);
-                pingBuffer.put("PING".getBytes());
-                pingBuffer.putInt(11);
-                pingBuffer.putLong(System.currentTimeMillis());
-                pingBuffer.put("END".getBytes());
-                sendMessage(out, pingBuffer);
-                outputStream.flush();
+                    ByteBuffer pingBuffer = ByteBuffer.allocate(19);
+                    pingBuffer.put("!PNG".getBytes());
+                    pingBuffer.putInt(11);
+                    pingBuffer.putLong(System.currentTimeMillis());
+                    sendMessage(out, pingBuffer);
+                    outputStream.flush();
 
+                    Thread.sleep(100);
 
-                Thread.sleep(100);
+                    byte[] msg1 = new byte[heloBuffer.array().length];
+                    byte[] msg2 = new byte[pingBuffer.array().length];
 
-                Game game = broker.getGames().get(gameId);
+                    loadBuffer(masterInputStream, msg1);
+                    assertArrayEquals(heloBuffer.array(), msg1);
 
-                Client client = game.getClients().get(1);
-
-                Message msg1 = client.getReceivedMessages().get(0);
-                Message msg2 = client.getReceivedMessages().get(1);
-
-                assertEquals("HELO", msg1.getType());
-                assertEquals(0, msg1.getBody().length);
-                assertEquals("PING", msg2.getType());
-                byte[] pingMsg = new byte[11];
-
-                pingBuffer.flip();
-                pingBuffer.getLong();
-                pingBuffer.get(pingMsg, 0, 11);
-
-                assertArrayEquals(pingMsg, msg2.getBody());
+                    loadBuffer(masterInputStream, msg2);
+                    assertArrayEquals(pingBuffer.array(), msg2);
+                }
             }
-
             System.out.println("Finished");
         } finally {
             broker.stop();
         }
     }
 
+    private static void loadBuffer(InputStream is, byte[] buf) throws IOException {
+        int p = 0;
+        while (p < buf.length) {
+            int r = is.read(buf, p, buf.length - p);
+            p += r;
+        }
+    }
+
     private static void sendMessage(PrintStream out, ByteBuffer buf) {
-        out.print(Integer.toHexString(buf.capacity()) + CRLF);
+        out.print(Integer.toHexString(buf.capacity()).toUpperCase() + CRLF);
         out.write(buf.array(), 0, buf.capacity());
         out.print(CRLF);
         out.flush();

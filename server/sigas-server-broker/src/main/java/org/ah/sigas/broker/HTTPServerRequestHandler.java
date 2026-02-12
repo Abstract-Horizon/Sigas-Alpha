@@ -80,6 +80,8 @@ public class HTTPServerRequestHandler extends HTTPRequestHandler {
                             clientInboundHandlerImpl.getBuffer().put(bytes, pos, initalReadCount);
                             clientInboundHandlerImpl.processInput(key, channel, initalReadCount);
                         }
+                        if (Broker.DEBUG) { System.out.println(gameId + ":" + token + " Got inbound connection"); }
+
                     } else if (method.equals("GET")) {
                         String contentLength = headers.get("content-length");
                         if (contentLength != null && !"0".equals(contentLength)) {
@@ -99,6 +101,7 @@ public class HTTPServerRequestHandler extends HTTPRequestHandler {
 
                         key.attach(outboundHandler);
                         outboundHandler.open(key);
+                        if (Broker.DEBUG) { System.out.println(gameId + ":" + token + " Got outbound connection"); }
                     }
                     return;
                 }

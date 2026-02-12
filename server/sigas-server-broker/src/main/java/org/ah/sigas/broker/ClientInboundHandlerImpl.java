@@ -39,7 +39,7 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
         processInput(key, channel, read);
     }
 
-    private boolean readMessage() {
+    private boolean readMessage() throws IOException {
         int l = msgLen - ptr;
         if (l > max - pos) {
             l = max - pos;
@@ -60,7 +60,7 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
         return false;
     }
 
-    private void parseMessage() {
+    private void parseMessage() throws IOException {
         while (pos < max && chunkLen > 0) {
             byte b = bytes[pos];
             if (ms != 8) {
@@ -108,7 +108,7 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
         }
     }
 
-    private void parse() {
+    private void parse() throws IOException {
         while (pos < max && !error) {
             byte b = bytes[pos];
             pos++;
@@ -121,12 +121,12 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
                 } else if (b == 13) {
                     cs = 1;
                 } else  {
-                    if (Broker.DEBUG) { println("Wrong input in Chunked-Encoding size, expected '0-9A-F' or CR; got '" + Integer.toString(b) + "'", true); }
+                    if (Broker.DEBUG) { log("Wrong input in Chunked-Encoding size, expected '0-9A-F' or CR; got '" + Integer.toString(b) + "'", true); }
                     error = true;
                 }
             } else if (cs == 1) {
                 if (b == 10) {
-                    if (Broker.TRACE) { println("Got chunk of " + chunkLen + " bytes"); }
+                    if (Broker.TRACE) { log("Got chunk of " + chunkLen + " bytes"); }
                     parseMessage();
                     if (chunkLen == 0) {
                         cs = 3;
@@ -134,7 +134,7 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
                         cs = 2;
                     }
                 } else {
-                    if (Broker.DEBUG) { println("Wrong input after CR in Chunked-Encoding size; expected LF and got '" + Integer.toString(b) + "'", true); }
+                    if (Broker.DEBUG) { log("Wrong input after CR in Chunked-Encoding size; expected LF and got '" + Integer.toString(b) + "'", true); }
                     error = true;
                 }
             } else if (cs == 2) {
@@ -147,15 +147,15 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
                 if (b == 13) {
                     cs = 4;
                 } else {
-                    if (Broker.DEBUG) { println("Expected chunk end (LF) but got '" + Integer.toString(b) + "'", true); }
+                    if (Broker.DEBUG) { log("Expected chunk end (LF) but got '" + Integer.toString(b) + "'", true); }
                     error = true;
                 }
             } else if (cs == 4) {
                 if (b == 10) {
-                    if (Broker.TRACE) { println("Completed chunk"); }
+                    if (Broker.TRACE) { log("Completed chunk"); }
                     cs = 0;
                 } else {
-                    if (Broker.DEBUG) { println("Expected chunk (CR) end but got '" + Integer.toString(b) + "'", true); }
+                    if (Broker.DEBUG) { log("Expected chunk (CR) end but got '" + Integer.toString(b) + "'", true); }
                     error = true;
                 }
             }
