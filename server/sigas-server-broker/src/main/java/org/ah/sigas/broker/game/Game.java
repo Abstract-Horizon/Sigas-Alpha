@@ -1,9 +1,10 @@
 package org.ah.sigas.broker.game;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
+import org.ah.sigas.broker.Broker;
 import org.ah.sigas.broker.message.Message;
 
 public class Game {
@@ -14,9 +15,9 @@ public class Game {
     }
 
     private String gameId;
-    private List<Client> clients = new ArrayList<>();
+    private Map<String, Client> clients = new HashMap<>();
 
-    private Client masterClient;
+    private Client master;
 
     private final long createdTimestamp = System.currentTimeMillis();
     private long lastActivity;
@@ -33,9 +34,9 @@ public class Game {
     public String getGameId() { return gameId; }
 
     public void addClient(Client client) {
-        clients.add(client);
+        clients.put(client.getClientId(), client);
         if (client.isMaster()) {
-            masterClient = client;
+            master = client;
         }
     }
 
@@ -45,7 +46,7 @@ public class Game {
 
     public void setState(State state) { this.state = state; }
 
-    public List<Client> getClients() { return clients; }
+    public Map<String, Client> getClients() { return clients; }
 
 
     public void touch() { lastActivity = System.currentTimeMillis(); }
@@ -53,7 +54,23 @@ public class Game {
 
     public void receivedMessage(Client client, Message message) throws IOException {
         if (!client.isMaster()) {
-            masterClient.sendMessage(message);
+            master.sendMessage(message);
+        } else {
+            String clientId = message.getClientId();
+            if ("00".equals(clientId)) {
+                for (Client destinationClient : clients.values()) {
+                    if (!destinationClient.isMaster()) {
+                        destinationClient.sendMessage(message);
+                    }
+                }
+            } else {
+                Client destinationClient = clients.get(clientId);
+                if (destinationClient == null) {
+                    if (Broker.INFO) { client.log("Got server message for non-existent client '" + clientId + "'"); }
+                } else {
+                    destinationClient.sendMessage(message);
+                }
+            }
         }
     }
 }

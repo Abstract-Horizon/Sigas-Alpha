@@ -7,25 +7,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.io.PrintWriter;
-import java.lang.reflect.Field;
 import java.net.HttpURLConnection;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.UnknownHostException;
-import java.net.spi.InetAddressResolver;
-import java.net.spi.InetAddressResolver.LookupPolicy;
 import java.nio.ByteBuffer;
-import java.util.stream.Stream;
 
 import org.ah.sigas.broker.Broker;
-import org.ah.sigas.broker.game.Client;
-import org.ah.sigas.broker.game.Game;
-import org.ah.sigas.broker.message.Message;
 import org.junit.Test;
 
 public class TestStreamingMessages {
@@ -69,7 +59,7 @@ public class TestStreamingMessages {
                     """
                     {
                         "master_token": "1234",
-                        "client_id": 1
+                        "client_id": "01"
                     }
                     """).getResponseCode());
 
@@ -81,7 +71,7 @@ public class TestStreamingMessages {
                     """
                     {
                         "token": "1235",
-                        "client_id": 2
+                        "client_id": "02"
                     }
                     """).getResponseCode());
 
@@ -121,9 +111,10 @@ public class TestStreamingMessages {
                     sendMessage(out, heloBuffer);
                     outputStream.flush();
 
-                    ByteBuffer pingBuffer = ByteBuffer.allocate(19);
-                    pingBuffer.put("!PNG".getBytes());
-                    pingBuffer.putInt(11);
+                    ByteBuffer pingBuffer = ByteBuffer.allocate(18);
+                    pingBuffer.put("PING".getBytes());
+                    pingBuffer.putInt(10);
+                    pingBuffer.putShort((short)0);
                     pingBuffer.putLong(System.currentTimeMillis());
                     sendMessage(out, pingBuffer);
                     outputStream.flush();
@@ -133,11 +124,19 @@ public class TestStreamingMessages {
                     byte[] msg1 = new byte[heloBuffer.array().length];
                     byte[] msg2 = new byte[pingBuffer.array().length];
 
+                    byte[] msg1Expected = heloBuffer.array();
+                    msg1Expected[8] = '0';
+                    msg1Expected[9] = '2';
+
+                    byte[] msg2Expected = pingBuffer.array();
+                    msg2Expected[8] = '0';
+                    msg2Expected[9] = '2';
+
                     loadBuffer(masterInputStream, msg1);
-                    assertArrayEquals(heloBuffer.array(), msg1);
+                    assertArrayEquals(msg1Expected, msg1);
 
                     loadBuffer(masterInputStream, msg2);
-                    assertArrayEquals(pingBuffer.array(), msg2);
+                    assertArrayEquals(msg2Expected, msg2);
                 }
             }
             System.out.println("Finished");

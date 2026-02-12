@@ -1,9 +1,12 @@
 package org.ah.sigas.broker;
 
+import static org.ah.sigas.broker.SimpleHTTPResponseHandler.CRLF;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SelectionKey;
+import java.nio.channels.WritableByteChannel;
 
 import org.ah.sigas.broker.game.Client;
 
@@ -22,6 +25,7 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
     private int ms = 0; // message state
     private int msgLen = 0;
     private boolean error = false;
+    private boolean gracefulEnd = false;
 
     private byte[] messageType = new byte[4];
     private byte[] messageBytes;
@@ -118,6 +122,8 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
                     chunkLen = chunkLen * 16 + (b - '0');
                 } else if (b >= 'A' && b <= 'F') {
                     chunkLen = chunkLen * 16 + (b - 'A' + 10);
+                } else if (b >= 'a' && b <= 'f') {
+                    chunkLen = chunkLen * 16 + (b - 'a' + 10);
                 } else if (b == 13) {
                     cs = 1;
                 } else  {
@@ -127,11 +133,16 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
             } else if (cs == 1) {
                 if (b == 10) {
                     if (Broker.TRACE) { log("Got chunk of " + chunkLen + " bytes"); }
-                    parseMessage();
                     if (chunkLen == 0) {
-                        cs = 3;
+                        error = true;
+                        gracefulEnd = true;
                     } else {
-                        cs = 2;
+                        parseMessage();
+                        if (chunkLen == 0) {
+                            cs = 3;
+                        } else {
+                            cs = 2;
+                        }
                     }
                 } else {
                     if (Broker.DEBUG) { log("Wrong input after CR in Chunked-Encoding size; expected LF and got '" + Integer.toString(b) + "'", true); }
@@ -176,7 +187,15 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
 
             buffer.clear();
             if (error) {
-                broker.closeChannel(key);
+                if (gracefulEnd) {
+                    buffer.put("HTTP/1.1 204 OK".getBytes()).put(CRLF);
+                    buffer.put(CRLF);
+
+                    buffer.flip();
+                    ((WritableByteChannel)channel).write(buffer);
+                } else {
+                    broker.closeChannel(key);
+                }
                 return;
             }
 

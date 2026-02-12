@@ -12,6 +12,11 @@ import org.ah.sigas.broker.game.Client;
 import org.ah.sigas.broker.game.Game;
 import org.ah.sigas.json.JSONParser;
 
+
+class ErrorAlreadySent extends Exception {
+}
+
+
 public class HTTPInternalRequestHandler extends HTTPRequestHandler {
 
     private interface RequestWithBody {
@@ -96,6 +101,8 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
 
             String masterToken = (String)res.get("master_token");
 
+            String id = extractClientId(key, res);
+
             if (broker.getGames().containsKey(gameId)) {
                 handleError(key, "Game with key " + gameId + " already exists");
                 return;
@@ -103,18 +110,18 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
 
             Game game = new Game(gameId);
             broker.getGames().put(gameId, game);
-            Client client = new Client(game, masterToken, true);
+            Client client = new Client(game, masterToken, id, true);
             game.addClient(client);
 
-            if (Broker.INFO) { System.out.println("Game " + gameId + " created"); }
+            if (Broker.INFO) { System.out.println("Game " + gameId + " created; token " + client.getToken()); }
 
             createSimpleResponse(key, 204, "OK");
 
+        } catch (ErrorAlreadySent ignore) {
         } catch (Exception e) {
             handleError(key, e);
         }
     }
-
 
     public void startGame(SelectionKey key, String gameId, String body) {
         Game game = broker.getGames().get(gameId);
@@ -144,6 +151,7 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
             }
 
             String token = (String)res.get("token");
+            String id = extractClientId(key, res);
 
             Game game = broker.getGames().get(gameId);
             if (game == null) {
@@ -151,7 +159,7 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
                 return;
             }
 
-            for (Client client : game.getClients()) {
+            for (Client client : game.getClients().values()) {
                 if (client.getToken().equals(token)) {
                     if (Broker.INFO) { System.out.println("Client with same token '" + token + "' already exists for game " + gameId); }
                     createSimpleResponse(key, 304, "NOT MODIFIED");
@@ -159,18 +167,37 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
                 }
             }
 
-            Client client = new Client(game, token, false);
+            Client client = new Client(game, token, id, false);
             game.addClient(client);
 
-            if (Broker.INFO) { System.out.println("Added client to game " + gameId); }
+            if (Broker.INFO) { System.out.println("Added client to game " + gameId + "; token " + client.getToken()); }
 
             createSimpleResponse(key, 204, "OK");
-
+        } catch (ErrorAlreadySent ignore) {
         } catch (Exception e) {
             handleError(key, e);
         }
     }
 
+    private String extractClientId(SelectionKey key, Map<String, Object> map) throws ErrorAlreadySent {
+        Object clientId = map.get("client_id");
+        if (clientId == null) {
+            handleError(key, "Missing 'client_id'");
+            throw new ErrorAlreadySent();
+        }
+        if (clientId instanceof String) {
+            String s = (String)clientId;
+            if (s.length() != 2) {
+                handleError(key, "Value for 'client_id' has to be exactly two characters long.");
+                throw new ErrorAlreadySent();
+            }
+            return s;
+        } else {
+            handleError(key, "Value for 'client_id' has to be positive integer between 0 and 65535 or two letter string");
+            throw new ErrorAlreadySent();
+        }
+
+    }
 
     private void loadBody(SelectionKey key, ReadableByteChannel channel, RequestWithBody receivingBodyCallback) throws IOException {
         if (!headers.containsKey("content-length")) {

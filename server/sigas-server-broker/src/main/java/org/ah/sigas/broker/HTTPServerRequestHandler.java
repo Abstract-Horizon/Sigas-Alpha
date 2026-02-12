@@ -45,9 +45,8 @@ public class HTTPServerRequestHandler extends HTTPRequestHandler {
                 return;
             }
 
-            for (Client client : game.getClients()) {
+            for (Client client : game.getClients().values()) {
                 if (client.getToken().equals(token)) {
-
                     if (method.equals("POST")) {
                         String transferEncoding = headers.get("transfer-encoding");
                         if (transferEncoding == null) {

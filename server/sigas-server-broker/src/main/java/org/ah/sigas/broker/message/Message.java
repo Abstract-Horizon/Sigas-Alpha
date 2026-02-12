@@ -11,6 +11,7 @@ public abstract class Message {
 
     private String type;
     private byte[] body;
+    private String clientId = null;
 
     public Message(String type, byte[] body) {
         this.type = type;
@@ -20,6 +21,17 @@ public abstract class Message {
     public String getType() { return type; }
     public byte[] getBody() { return body; }
     public boolean isSystemMessage() { return type.charAt(0) == '!'; }
+
+    public String getClientId() {
+        if (clientId == null) {
+            if (body.length < 2) {
+                clientId = "--";
+            } else {
+                clientId = new String(body, 0, 2);
+            }
+        }
+        return clientId;
+    }
 
     public static void registerMessageType(String msgType, Class<? extends Message> msgClass) {
         MESSAGE_TYPES.put(msgType, msgClass);

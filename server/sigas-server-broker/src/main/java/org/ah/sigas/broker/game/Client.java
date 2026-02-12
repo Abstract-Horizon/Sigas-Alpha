@@ -13,6 +13,7 @@ public class Client {
     private Game game;
     private boolean master;
     private String token;
+    private String clientId;
     private final long createdTimestamp = System.currentTimeMillis();
     private long lastActivity;
     private ClientHandler clientInboundHandler;
@@ -21,9 +22,10 @@ public class Client {
     // private LinkedList <Message> receivedMessages = new LinkedList<>();
     private LinkedList <Message> messagesToSend = new LinkedList<>();
 
-    public Client(Game game, String token, boolean master) {
+    public Client(Game game, String token, String clientId, boolean master) {
         this.game = game;
         this.token = token;
+        this.clientId = clientId;
         this.master = master;
         lastActivity = createdTimestamp;
     }
@@ -33,6 +35,7 @@ public class Client {
     public String getToken() { return token; }
     public long getCreatedTimestamp() { return createdTimestamp; }
     public long getLastActivity() { return lastActivity; }
+    public String getClientId() { return clientId; }
 
     public ClientHandler getInboundHandler() { return clientInboundHandler; }
     public void setInboundHandler(ClientHandler clientInboundHandler) { this.clientInboundHandler = clientInboundHandler; }
@@ -45,7 +48,17 @@ public class Client {
     public LinkedList<Message> getMessagesToSend() { return messagesToSend; }
 
     public void receivedMessage(String type, byte[] body) throws IOException {
+        if (body.length < 2) {
+            if (Broker.INFO) { log("ERROR: Received message from client btu size is less than 2!"); }
+            return;
+        }
         if (Broker.TRACE) { log("Received message '" + type + "': \n" + new String(body)); }
+
+        if (!master) {
+            body[0] = (byte)clientId.charAt(0);
+            body[1] = (byte)clientId.charAt(1);
+        }
+
         game.receivedMessage(this, Message.createMessage(type, body));
     }
 
