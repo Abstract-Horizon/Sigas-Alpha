@@ -29,8 +29,6 @@ public class Broker {
     private ServerSocketChannel internalChannel;
     private Selector selector;
 
-    private int connectionNum;
-
     private Map<String, Game> games = new HashMap<>();
 
     private boolean doStop = false;
@@ -87,7 +85,7 @@ public class Broker {
                             }
                         }
                     } catch (Exception e) {
-                        System.err.println("Closing channel: error while handling selection key. Channel: " + key.channel() + "; " + e.getMessage());
+                        System.err.println("*** Closing channel: error while handling selection key. Channel: " + key.channel() + "; " + e.getClass().getCanonicalName() + "(" + (e.getMessage() != null ? e.getMessage() : "") + ")");
                         e.printStackTrace();
                         closeChannel(key);
                     }
@@ -118,10 +116,7 @@ public class Broker {
 
             clientChannel.configureBlocking(false);
             SelectionKey key = clientChannel.register(selector, SelectionKey.OP_READ); // Expecting other side to send some data first
-            if (DEBUG) { System.out.println("Accepting channel " + clientChannel); }
-
-            connectionNum++;
-            if (DEBUG) { System.out.println("Got new connection handler for channel: " + clientChannel + ", connection #: " + connectionNum); }
+            if (DEBUG) { System.out.println("*** Accepting channel " + logChannel(clientChannel)); }
 
             key.attach(new HTTPServerRequestHandler(this));
         } else {
@@ -133,10 +128,7 @@ public class Broker {
 
             clientChannel.configureBlocking(false);
             SelectionKey key = clientChannel.register(selector, SelectionKey.OP_READ); // Expecting other side to send some data first
-            if (DEBUG) { System.out.println("Accepting channel " + clientChannel); }
-
-            connectionNum++;
-            if (DEBUG) { System.out.println("Got new connection handler for channel: " + clientChannel + ", connection #: " + connectionNum); }
+            if (DEBUG) { System.out.println("*** Accepting channel " + logChannel(clientChannel)); }
 
             key.attach(new HTTPInternalRequestHandler(this));
         }
@@ -148,7 +140,7 @@ public class Broker {
 
         Handler handler = (Handler)key.attachment();
         if (handler == null) {
-            throw new IOException("Read: Handler is missing for the channel: " + key.channel());
+            throw new IOException("Read: Handler is missing for the channel: " + logChannel((SocketChannel)key.channel()));
         }
 
         handler.read(key, clientChannel);
@@ -157,19 +149,17 @@ public class Broker {
     private void write(SelectionKey key) throws IOException {
         Handler handler = (Handler)key.attachment();
         if (handler == null) {
-            throw new IOException("Write: Handler is missing for the channel: " + key.channel());
+            throw new IOException("Write: Handler is missing for the channel: " + logChannel((SocketChannel)key.channel()));
         }
 
         SocketChannel clientChannel = (SocketChannel) key.channel();
         handler.write(key, clientChannel);
     }
 
-    public void closeChannel(SelectionKey key) {
-        connectionNum--;
-
+    public void closeChannel(SelectionKey key) throws IOException {
         SocketChannel channel = (SocketChannel) key.channel();
         key.cancel();
-        if (DEBUG) { System.out.println("Closing connection for channel: " + channel + ", active connections: " + connectionNum); }
+        if (DEBUG) { System.out.println("*** Closing connection for channel: " + logChannel(channel)); }
 
         Handler handler = (Handler)key.attachment();
         if (handler != null) {
@@ -179,7 +169,17 @@ public class Broker {
         try {
             channel.close();
         } catch (IOException e) {
-            System.err.println("Error during closing channel: " + channel + "; " + e.getMessage());
+            System.err.println("*** Error during closing channel: " + logChannel(channel) + "; " + e.getMessage());
+        }
+    }
+
+    public static String logChannel(SocketChannel channel) throws IOException {
+        if (channel.isOpen()) {
+            InetSocketAddress local = ((InetSocketAddress)channel.getLocalAddress());
+            InetSocketAddress remote = ((InetSocketAddress)channel.getRemoteAddress());
+            return local.getPort() + ":" + remote.getAddress() + ":" + remote.getPort();
+        } else {
+            return "closed channel " + channel;
         }
     }
 }

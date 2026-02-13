@@ -151,11 +151,11 @@ public abstract class HTTPRequestHandler implements Handler {
         }
 
         if (parsingComplete) {
-            if (Broker.DEBUG) { System.out.println("Received request: method '" + method + "' on path '" + path + "' with protocol '" + protocol + "' on " + key.channel()); }
-            if (Broker.DEBUG) {
-                System.out.println("Headers:");
+            if (Broker.DEBUG) { System.out.println("--- Received request: method '" + method + "' on path '" + path + "' with protocol '" + protocol + "' on " + key.channel()); }
+            if (Broker.TRACE) {
+                System.out.println("    Headers:");
                 for (Map.Entry<String, String> header : headers.entrySet()) {
-                    System.out.println("  " + header.getKey() + ": " + header.getValue());
+                    System.out.println("      " + header.getKey() + ": " + header.getValue());
                 }
             }
 

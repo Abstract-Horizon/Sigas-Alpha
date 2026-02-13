@@ -79,6 +79,8 @@ public class ClientOutboundHandlerImpl extends BaseClientHandler {
     public void open(SelectionKey associatedKey) {
         super.open(associatedKey);
         associatedKey.interestOps(SelectionKey.OP_WRITE);
+        buffer.clear();
+        headersSent = false;
     }
 
     public void clientHasMessages() throws IOException {

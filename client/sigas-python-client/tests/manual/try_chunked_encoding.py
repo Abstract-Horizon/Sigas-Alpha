@@ -1,3 +1,5 @@
+import sys
+
 import requests
 import time
 import struct
@@ -38,15 +40,15 @@ def receive_client_input(client_id: str):
         print(f"Client {client_id} received message {typ} ({len}) from master; body='{body}'")
 
 
-client1_thread = Thread(target=receive_master_input, args=["1234"])
+client1_thread = Thread(target=receive_master_input, args=["1234"], daemon=True)
 client1_thread.start()
 
 
-client1_thread = Thread(target=receive_client_input, args=["1235"])
+client1_thread = Thread(target=receive_client_input, args=["1235"], daemon=True)
 client1_thread.start()
 
 
-client1_thread = Thread(target=receive_client_input, args=["1236"])
+client1_thread = Thread(target=receive_client_input, args=["1236"], daemon=True)
 client1_thread.start()
 
 time.sleep(1)
@@ -74,3 +76,5 @@ requests.post('http://localhost:8081/game/333/1234', data=message_generator([
     b"PONG" + struct.pack(">i", 10) + b"00" + struct.pack(">q", now)
 ]))
 print("Sent messages as master 1234")
+
+sys.exit(0)

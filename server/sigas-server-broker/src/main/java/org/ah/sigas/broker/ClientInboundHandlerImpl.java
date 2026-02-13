@@ -38,6 +38,25 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
     public ByteBuffer getBuffer() { return buffer; }
 
     @Override
+    public void open(SelectionKey associatedKey) {
+        super.open(associatedKey);
+        buffer.clear();
+
+        pos = 0;
+        max = 0;
+
+        cs = 0;
+        chunkLen = 0;
+
+        ms = 0;
+        msgLen = 0;
+        error = false;
+        gracefulEnd = false;
+
+        ptr = 0;
+    }
+
+    @Override
     public void read(SelectionKey key, ReadableByteChannel channel) throws IOException {
         int read = channel.read(buffer);
         processInput(key, channel, read);

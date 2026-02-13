@@ -79,7 +79,7 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
                     handleError(key, e);
                 }
             } else {
-                System.out.println("Not found '" + routeKey + "'");
+                System.err.println(gameId + ":- Not found '" + routeKey + "'");
             }
         }
 
@@ -104,7 +104,7 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
             String id = extractClientId(key, res);
 
             if (broker.getGames().containsKey(gameId)) {
-                handleError(key, "Game with key " + gameId + " already exists");
+                handleError(key, gameId + ":- Game with same key already exists");
                 return;
             }
 
@@ -113,7 +113,7 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
             Client client = new Client(game, masterToken, id, true);
             game.addClient(client);
 
-            if (Broker.INFO) { System.out.println("Game " + gameId + " created; token " + client.getToken()); }
+            if (Broker.INFO) { System.out.println(gameId + ":" + client.getToken() + " Game created."); }
 
             createSimpleResponse(key, 204, "OK");
 
@@ -126,13 +126,13 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
     public void startGame(SelectionKey key, String gameId, String body) {
         Game game = broker.getGames().get(gameId);
         if (game == null) {
-            handleError(key, "Game with key " + gameId + " does not exist");
+            handleError(key, gameId + ":- Game with supplied key does not exist");
             return;
         }
 
         game.setState(Game.State.RUNNING);
 
-        if (Broker.INFO) { System.out.println("Game " + gameId + " started"); }
+        if (Broker.INFO) { System.out.println(gameId + ":- Game started"); }
 
         createSimpleResponse(key, 204, "OK");
     }
@@ -161,7 +161,7 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
 
             for (Client client : game.getClients().values()) {
                 if (client.getToken().equals(token)) {
-                    if (Broker.INFO) { System.out.println("Client with same token '" + token + "' already exists for game " + gameId); }
+                    if (Broker.INFO) { System.out.println(gameId + ":" + token + " Client with same token already exists for game"); }
                     createSimpleResponse(key, 304, "NOT MODIFIED");
                     return;
                 }
@@ -170,7 +170,7 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
             Client client = new Client(game, token, id, false);
             game.addClient(client);
 
-            if (Broker.INFO) { System.out.println("Added client to game " + gameId + "; token " + client.getToken()); }
+            if (Broker.INFO) { System.out.println(gameId + ":" + client.getToken() + " Added client to game"); }
 
             createSimpleResponse(key, 204, "OK");
         } catch (ErrorAlreadySent ignore) {
