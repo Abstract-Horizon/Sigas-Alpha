@@ -3,7 +3,7 @@ import struct
 import time
 from queue import Queue, Empty
 from threading import Thread
-from typing import Any, Generator
+from typing import Any, Generator, Optional
 
 import requests
 
@@ -13,7 +13,7 @@ from sigas_alpha.game.message.Message import create_message, T_EXTENDS_MESSAGE
 logger = logging.getLogger(__name__)
 
 
-class HTTPClient:
+class HTTPGameClient:
     def __init__(self, url: str, game_id: str, token: str) -> None:
         self.url = url
         self.game_id = game_id
@@ -26,7 +26,10 @@ class HTTPClient:
         self._send_queue: Queue[T_EXTENDS_MESSAGE] = Queue()
         self._receive_queue: Queue[T_EXTENDS_MESSAGE] = Queue()
 
-    def start(self) -> 'HTTPClient':
+    def create_game(self) -> None:
+        pass
+
+    def start(self) -> 'HTTPGameClient':
         self._do_run = True
 
         url = f"{self.url}/{self.game_id}/{self.token}"
@@ -38,7 +41,7 @@ class HTTPClient:
         self._receiving_thread.start()
         return self
 
-    def stop(self, wait: bool = True) -> 'HTTPClient':
+    def stop(self, wait: bool = True) -> 'HTTPGameClient':
         self._do_run = False
         if wait:
             while self._sending_thread_running or self._receive_thread_running:
@@ -87,5 +90,8 @@ class HTTPClient:
     def send_message(self, message: T_EXTENDS_MESSAGE) -> None:
         self._send_queue.put(message)
 
-    def get_message(self, block: bool = True, timeout: float = None) -> T_EXTENDS_MESSAGE:
-        return self._receive_queue.get(block, timeout)
+    def get_message(self, block: bool = True, timeout: float = None) -> Optional[T_EXTENDS_MESSAGE]:
+        try:
+            return self._receive_queue.get(block, timeout)
+        except Empty:
+            return None

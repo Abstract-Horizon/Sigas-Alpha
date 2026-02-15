@@ -20,6 +20,11 @@ class Message(ABC):
     def __repr__(self) -> str:
         return f"{self.typ}({self.body()})"
 
+    def __eq__(self, other) -> bool:
+        if isinstance(other, Message):
+            return self.typ == other.typ and self.body() == other.body()
+        return False
+
 
 class UnknownMessage(Message):
     def __init__(self, typ: str, body: bytes) -> None:
@@ -61,6 +66,11 @@ class MessageWithClientId(Message, ABC):
     def __repr__(self) -> str:
         body = self.body()
         return f"{self.typ}({self.client_id}{', ' + str(body[2:]) if len(body) > 2 else ''})"
+
+    def __eq__(self, other) -> bool:
+        if isinstance(other, MessageWithClientId):
+            return self.typ == other.typ and self.client_id == other.client_id and self.body() == other.body()
+        return False
 
 
 T_EXTENDS_MESSAGE = TypeVar("T_EXTENDS_MESSAGE", bound=Message)

@@ -58,8 +58,21 @@
           <artifactId>maven-compiler-plugin</artifactId>
           <!-- best lock down version of the plugin too -->
           <configuration>
-            <source>21</source>
-            <target>21</target>
+            <source>17</source>
+            <target>17</target>
+            <release>17</release>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-jar-plugin</artifactId>
+          <configuration>
+            <archive>
+              <manifest>
+                <addClasspath>true</addClasspath>
+                <mainClass>org.ah.sigas.broker.Main</mainClass>
+              </manifest>
+            </archive>
           </configuration>
         </plugin>
       </plugins>

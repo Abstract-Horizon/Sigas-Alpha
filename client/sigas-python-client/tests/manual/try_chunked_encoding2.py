@@ -6,7 +6,7 @@ import time
 import struct
 from threading import Thread
 
-from sigas_alpha.client.http_client import HTTPClient
+from sigas_alpha.client.http_game_client import HTTPGameClient
 from sigas_alpha.game.message.Message import MessageWithClientId, register_message_type
 
 
@@ -59,52 +59,71 @@ requests.post('http://localhost:8082/game/333/client', data='{"token": "1236", "
 
 requests.put('http://localhost:8082/game/333/start', data='')
 
-master_http_client = HTTPClient("http://localhost:8081/game", "333", "1234").start()
-client1_http_client = HTTPClient("http://localhost:8081/game", "333", "1235").start()
-client2_http_client = HTTPClient("http://localhost:8081/game", "333", "1236").start()
-
-def receive_messages(client: HTTPClient, connection_type: str):
-    while True:
-        msg = client.get_message(True)
-        client_id = "-"
-        if isinstance(msg, MessageWithClientId):
-            client_id = msg.client_id
-        print(f"{connection_type}: Client {client_id} received message {msg}")
+master_http_client = HTTPGameClient("http://localhost:8081/game", "333", "1234").start()
+client1_http_client = HTTPGameClient("http://localhost:8081/game", "333", "1235").start()
+client2_http_client = HTTPGameClient("http://localhost:8081/game", "333", "1236").start()
 
 
-Thread(target=receive_messages, args=[master_http_client, "master"], daemon=True).start()
-Thread(target=receive_messages, args=[client1_http_client, "client1"], daemon=True).start()
-Thread(target=receive_messages, args=[client2_http_client, "client2"], daemon=True).start()
+master_messages = []
+client1_messages = []
+client2_messages = []
 
-time.sleep(1)
-
-
-def message_generator(messages: list[bytes]):
-    for msg in messages:
-        yield msg
+finished = False
 
 
-now = int(time.time() * 1000)
+def receive_messages(client: HTTPGameClient, connection_type: str, messages_destination: list):
+    while not finished:
+        msg = client.get_message(True, 0.5)
+        if msg is not None:
+            client_id = "-"
+            if isinstance(msg, MessageWithClientId):
+                client_id = msg.client_id
+            print(f"{connection_type}: Client {client_id} received message {msg}")
+            messages_destination.append(msg)
+        else:
+            time.sleep(0.1)
 
 
-# print("Sending messages as client 1235")
-# master_http_client.send_message(HeloMessage("01"))
-# master_http_client.send_message(PingMessage("01"))
-# print("Sent messages as client 1235")
+master_thread = Thread(target=receive_messages, args=[master_http_client, "master", master_messages], daemon=True)
+client1_thread = Thread(target=receive_messages, args=[client1_http_client, "client1", client1_messages], daemon=True)
+clietn2_thread = Thread(target=receive_messages, args=[client2_http_client, "client2", client2_messages], daemon=True)
 
-print("Sending messages as client 1235")
-client1_http_client.send_message(HeloMessage())
-client1_http_client.send_message(PingMessage())
-print("Sent messages as client 1235")
+master_thread.start()
+client1_thread.start()
+clietn2_thread.start()
+try:
+    time.sleep(0.2)
 
-time.sleep(1)
 
-print("Sending messages as master 1234")
-master_http_client.send_message(PongMessage("02"))
-print("Sent messages as master 1234")
+    def message_generator(messages: list[bytes]):
+        for msg in messages:
+            yield msg
 
-print("Waiting 10s...")
-time.sleep(10)
+
+    print("Sending messages as client 1235")
+    client1_http_client.send_message(HeloMessage())
+    client1_http_client.send_message(PingMessage())
+    print("Sent messages as client 1235")
+
+    time.sleep(1)
+
+    print("Sending messages as master 1234")
+    master_http_client.send_message(PongMessage("02"))
+    print("Sent messages as master 1234")
+
+    print("Waiting up to 10s...")
+    now = time.time()
+    while time.time() - now < 10 and len(master_messages) < 2 and len(client1_messages) < 1:
+        time.sleep(0.1)
+
+
+finally:
+    finished = True
+    master_thread.join(1)
+    client1_thread.join(1)
+    clietn2_thread.join(1)
+
+
 print("Done")
 
-sys.exit(0)
+# sys.exit(0)
