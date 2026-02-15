@@ -3,6 +3,7 @@ package org.ah.sigas.broker;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketException;
 import java.net.URI;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -168,6 +169,8 @@ public class Broker {
 
         try {
             channel.close();
+        } catch (SocketException ignore) {
+            // ignore
         } catch (IOException e) {
             System.err.println("*** Error during closing channel: " + logChannel(channel) + "; " + e.getMessage());
         }

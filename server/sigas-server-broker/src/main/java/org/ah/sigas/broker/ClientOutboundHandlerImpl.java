@@ -3,6 +3,7 @@ package org.ah.sigas.broker;
 import static org.ah.sigas.broker.SimpleHTTPResponseHandler.CRLF;
 
 import java.io.IOException;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.WritableByteChannel;
@@ -29,50 +30,58 @@ public class ClientOutboundHandlerImpl extends BaseClientHandler {
 
     @Override
     public void write(SelectionKey key, WritableByteChannel channel) throws IOException {
-        if (!headersSent) {
-            buffer.clear();
-            buffer.put("HTTP/1.1 200 OK".getBytes()).put(CRLF);
-            buffer.put("Transfer-Encoding: chunked".getBytes()).put(CRLF);
-            buffer.put(CRLF);
+        try {
+            if (!headersSent) {
+                buffer.clear();
+                buffer.put("HTTP/1.1 200 OK".getBytes()).put(CRLF);
+                buffer.put("Transfer-Encoding: chunked".getBytes()).put(CRLF);
+                buffer.put(CRLF);
 
-            buffer.flip();
-            channel.write(buffer);
+                buffer.flip();
+                channel.write(buffer);
 
-            headersSent = true;
+                headersSent = true;
 
-            Message message = client.getMessagesToSend().peekFirst();
-            if (message == null) {
-                if (Broker.DEBUG) { log("Sent headers out - no messages"); }
-                key.interestOps(0);
-            } else {
-                if (Broker.DEBUG) { log("Sent headers out - next messages"); }
-            }
-            return;
-        }
-
-        Message message = client.getMessagesToSend().pollFirst();
-        if (message != null) {
-            byte[] body = message.getBody();
-            buffer.clear();
-            buffer.put(Integer.toString(body.length + 8, 16).getBytes()).put(CRLF);
-            buffer.put(message.getType().getBytes());
-            buffer.putInt(body.length);
-            buffer.put(body);
-            buffer.put(CRLF);
-            buffer.flip();
-
-            channel.write(buffer);
-
-            if (Broker.DEBUG) { log("Sent message " + message.getType() + " out."); }
-
-            message = client.getMessagesToSend().peekFirst();
-            if (message != null) {
+                Message message = client.getMessagesToSend().peekFirst();
+                if (message == null) {
+                    if (Broker.DEBUG) { log("Sent headers out - no messages"); }
+                    key.interestOps(0);
+                } else {
+                    if (Broker.DEBUG) { log("Sent headers out - next messages"); }
+                }
                 return;
             }
-        } else {
-            if (Broker.DEBUG) { log("Asked to send but no messages."); }
+
+            Message message = client.getMessagesToSend().pollFirst();
+            if (message != null) {
+                byte[] body = message.getBody();
+                buffer.clear();
+                buffer.put(Integer.toString(body.length + 8, 16).getBytes()).put(CRLF);
+                buffer.put(message.getType().getBytes());
+                buffer.putInt(body.length);
+                buffer.put(body);
+                buffer.put(CRLF);
+                buffer.flip();
+
+                channel.write(buffer);
+
+                if (Broker.DEBUG) { log("Sent message " + message.getType() + " out."); }
+
+                message = client.getMessagesToSend().peekFirst();
+                if (message != null) {
+                    return;
+                }
+            } else {
+                if (Broker.DEBUG) { log("Asked to send but no messages."); }
+            }
+            key.interestOps(0);
+        } catch (SocketException e) {
+            if (!channel.isOpen()) {
+                throw e;
+            } else {
+                broker.closeChannel(key);
+            }
         }
-        key.interestOps(0);
     }
 
     @Override

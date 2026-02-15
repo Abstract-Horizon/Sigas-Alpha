@@ -21,11 +21,11 @@ def receive_master_input(master_id: str):
 
     for chunk in (r.raw.read_chunked()):
         typ = chunk[0:4].decode("ASCII")
-        len = struct.unpack(">i", chunk[4:8])[0]
-        body = chunk[8:8 + len]
+        l = struct.unpack(">i", chunk[4:8])[0]
+        body = chunk[8:8 + l]
         client_id = body[:2].decode('ascii')
         body = body[2:]
-        print(f"Master received message {typ} ({len}) from {client_id}; body='{body}'")
+        print(f"Master received message {typ} ({l}) from {client_id}; body='{body}'")
 
 
 def receive_client_input(client_id: str):

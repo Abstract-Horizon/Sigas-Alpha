@@ -49,7 +49,7 @@ public class Client {
 
     public void receivedMessage(String type, byte[] body) throws IOException {
         if (body.length < 2) {
-            if (Broker.INFO) { log("ERROR: Received message from client btu size is less than 2!"); }
+            if (Broker.INFO) { log("ERROR: Received message from client but size is less than 2!"); }
             return;
         }
         if (Broker.TRACE) { log("Received message '" + type + "': \n" + new String(body)); }

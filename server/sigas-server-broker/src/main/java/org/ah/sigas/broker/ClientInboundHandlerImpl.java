@@ -3,6 +3,7 @@ package org.ah.sigas.broker;
 import static org.ah.sigas.broker.SimpleHTTPResponseHandler.CRLF;
 
 import java.io.IOException;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SelectionKey;
@@ -58,8 +59,16 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
 
     @Override
     public void read(SelectionKey key, ReadableByteChannel channel) throws IOException {
-        int read = channel.read(buffer);
-        processInput(key, channel, read);
+        try {
+            int read = channel.read(buffer);
+            processInput(key, channel, read);
+        } catch (SocketException e) {
+            if (!channel.isOpen()) {
+                throw e;
+            } else {
+                broker.closeChannel(key);
+            }
+        }
     }
 
     private boolean readMessage() throws IOException {
