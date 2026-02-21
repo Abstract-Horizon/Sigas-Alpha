@@ -12,7 +12,7 @@ class BrokerSetup:
     def __init__(self, server_port: Optional[int] = None, internal_port: Optional[int] = None, hub_port: Optional[int] = None) -> None:
         self.finished = False
         self.project_root = Path(__file__).parent.parent.absolute()
-        self.broker_home = (self.project_root.parent.parent.parent / "server" / "sigas-server-broker").absolute()
+        self.broker_home = (self.project_root.parent.parent.parent.parent / "server" / "sigas-server-broker").absolute()
         self.jar_file = self.broker_home / "target" / "sigas-broker-0.0.1-SNAPSHOT.jar"
 
         self.server_port = server_port if server_port is not None else self._find_free_port()
