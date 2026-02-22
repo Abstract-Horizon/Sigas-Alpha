@@ -3,7 +3,7 @@ from typing import Optional
 
 from flask import Flask, Response, Request
 
-from sigas_server_hub.apps import external_route
+from sigas_server_hub.flask_apps import external_route
 from sigas_server_hub.sessions import SessionManager
 from sigas_server_hub.web_actions import WebActions
 

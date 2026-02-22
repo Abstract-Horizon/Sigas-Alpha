@@ -1,6 +1,6 @@
 from flask import Response
 
-from sigas_server_hub.apps import app_external, app_internal, external_route, internal_route
+from sigas_server_hub.flask_apps import external_route, internal_route
 from sigas_server_hub.game.game_manager import GameManager
 from sigas_server_hub.web_actions import WebActions
 

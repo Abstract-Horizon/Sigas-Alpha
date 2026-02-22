@@ -1,35 +1,31 @@
 import functools
 import inspect
-import random
-import sys
-from base64 import urlsafe_b64encode
-from typing import Callable, Optional, Union, Tuple
+from typing import Callable, Optional, Union
 
-from flask import Flask, request, Request
+from flask import Flask, request, Request, g
 
 from sigas_server_hub.responses import error
 from sigas_server_hub.web_actions import actions
-
-HASH_LIMIT = 2 ** 48
+from sigas_server_hub.utils import find_class
 
 
 app_external = Flask("External")
 app_internal = Flask("Internal")
 
-app_context: Optional['AppContext'] = None
+sigas_hub: Optional['SigasHub'] = None
 
 
-def set_app_context(_app_context: 'AppContext') -> None:
-    global app_context
-    app_context = _app_context
+def set_hub(_sigas_hub: 'SigasHub') -> None:
+    global sigas_hub
+    sigas_hub = _sigas_hub
 
 
 def external_route(
         path: str,
         methods: list[str],
         json_body: str = None,
-        headers: Union[str, list[Union[str, Tuple[str, str]]]] = None,
-        params: Union[str, list[Union[str, Tuple[str, str]]]] = None):
+        headers: Union[str, list[Union[str, tuple[str, str]]]] = None,
+        params: Union[str, list[Union[str, tuple[str, str]]]] = None):
     return route(app_external, path, methods, json_body, headers, params)
 
 
@@ -37,8 +33,8 @@ def internal_route(
         path: str,
         methods: list[str],
         json_body: str = None,
-        headers: Union[str, list[Union[str, Tuple[str, str]]]] = None,
-        params: Union[str, list[Union[str, Tuple[str, str]]]] = None):
+        headers: Union[str, list[Union[str, tuple[str, str]]]] = None,
+        params: Union[str, list[Union[str, tuple[str, str]]]] = None):
     return route(app_internal, path, methods, json_body, headers, params)
 
 
@@ -47,8 +43,8 @@ def route(
         path: str,
         methods: list[str],
         json_body: str = None,
-        headers: Union[str, list[Union[str, Tuple[str, str]]]] = None,
-        params: Union[str, list[Union[str, Tuple[str, str]]]] = None):
+        headers: Union[str, list[Union[str, tuple[str, str]]]] = None,
+        params: Union[str, list[Union[str, tuple[str, str]]]] = None):
 
     def decorator(func: Callable):
         class_placeholder = []
@@ -74,14 +70,14 @@ def route(
             all_headers_param = headers if isinstance(headers, str) else None
             all_query_params = params if isinstance(params, str) else None
 
-            def expand_param(v: Union[str, Tuple[str, str]]) -> str:
+            def expand_param(v: Union[str, tuple[str, str]]) -> str:
                 return v if isinstance(v, str) else v[1]
 
-            def header_value(v: Union[str, Tuple[str, str]]) -> Optional[str]:
+            def header_value(v: Union[str, tuple[str, str]]) -> Optional[str]:
                 v = v if isinstance(v, str) else v[1]
                 return request.headers[v] if v in request.headers else None
 
-            def param_value(v: Union[str, Tuple[str, str]]) -> Optional[str]:
+            def param_value(v: Union[str, tuple[str, str]]) -> Optional[str]:
                 v = v if isinstance(v, str) else v[1]
                 return request.args[v] if v in request.args else None
 
@@ -107,24 +103,7 @@ def route(
     return decorator
 
 
-def fast_random_hash(size: int) -> str:
-    return urlsafe_b64encode((hash(random.random()) % HASH_LIMIT).to_bytes(size, "big")).decode("UTF8").rstrip("=")
-
-
-def find_class(func):
-    cls = sys.modules.get(func.__module__)
-    if cls is None:
-        return None
-    if "__qualname__" not in dir(func):
-        return None
-    for name in func.__qualname__.split(".")[:-1]:
-        cls = getattr(cls, name)
-    if not inspect.isclass(cls):
-        return None
-    return cls
-
-
-def permissions(permissions: list[Union[str, Tuple[str]]]):
+def permissions(permissions: list[Union[str, tuple[str]]]):
 
     def decorator(func: Callable):
 
@@ -140,16 +119,17 @@ def permissions(permissions: list[Union[str, Tuple[str]]]):
 
             token_str = authorisation[6:]
 
-            token = app_context.token_manager.get_token(token_str)
+            token = sigas_hub.token_manager.get_token(token_str)
             if token is None:
                 return error(401, "Not authorised")
 
             if len(token.permissions & set(permissions)) == 0:
                 return error(401, "Not authorised; not enough permissions")
 
+            g.token = token
+
             return func(*args, **kwargs)
 
         return wrap
 
     return decorator
-

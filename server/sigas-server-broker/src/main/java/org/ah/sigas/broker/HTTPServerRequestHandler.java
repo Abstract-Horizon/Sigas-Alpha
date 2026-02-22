@@ -22,18 +22,24 @@ public class HTTPServerRequestHandler extends HTTPRequestHandler {
             return;
         }
 
-        if (path.startsWith("/game/")) {
+        if (path.startsWith("/game/stream/")) {
 
-            path = path.substring(6);
-            int i = path.indexOf('/');
-            if (i < 1) {
-                if (Broker.INFO) { System.out.println("Bad request - no game id and token in path '" + path + "'"); }
-                createSimpleResponse(key, 400, "BAD REQUEST", "Need game id and token");
+            String gameId = path.substring(13);
+            if (gameId.length() == 0) {
+                if (Broker.INFO) { System.out.println("Bad request - no game id path '" + path + "'"); }
+                createSimpleResponse(key, 400, "BAD REQUEST", "Need game id in path");
                 return;
             }
 
-            String gameId = path.substring(0, i);
-            String token = path.substring(i + 1);
+            String authorizationHeader = headers.get("authorization");
+
+            if (authorizationHeader == null || !authorizationHeader.startsWith("Token ") || authorizationHeader.length() < 7) {
+                if (Broker.INFO) { System.out.println("Not Authorized - no Authorization header or not Token authorization" + (authorizationHeader != null ? ("'" + authorizationHeader + "'") : "")); }
+                createSimpleResponse(key, 403, "UNAUTHORIZED", "Need token");
+                return;
+            }
+
+            String token = authorizationHeader.substring(6);
 
             String prefix = gameId + ":" + token + " ";
 

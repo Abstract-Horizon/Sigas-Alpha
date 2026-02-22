@@ -1,10 +1,10 @@
 import json
 import os
+import random
 import time
 from typing import Optional
 
-from sigas_server_hub.apps import fast_random_hash
-from sigas_server_hub.tokens import TOKEN_LENGTH, Permissions
+from sigas_server_hub.utils import fast_random_hash, TOKEN_LENGTH, Permissions
 
 
 class User:
@@ -80,6 +80,7 @@ class UserManager:
 
         self.expunge_trigger_ratio = expunge_trigger_ratio
         self.duplicates_and_invalid_users = 0
+        self.anonymous_number = random.randint(123, 5428)
 
     def create_user(self,
                     username: str,
@@ -181,3 +182,7 @@ class UserManager:
             self._save_users()
             return True
         return False
+
+    def next_anonymous_number(self) -> int:
+        self.anonymous_number += 1
+        return self.anonymous_number

@@ -82,8 +82,9 @@ public class TestStreamingMessages {
                     "/game/" + gameId + "/start",
                     "").getResponseCode());
 
-            URL url = new URI("http://localhost:" + serverPort + "/game/" + gameId + "/" + masterToken).toURL();
+            URL url = new URI("http://localhost:" + serverPort + "/game/stream/" + gameId).toURL();
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestProperty("Authorization", "Token " + masterToken);
             connection.setRequestMethod("GET");
             connection.connect();
             try(InputStream masterInputStream = connection.getInputStream()) {
@@ -95,11 +96,12 @@ public class TestStreamingMessages {
                     ) {
 
 
-                    out.print("POST /game/" + gameId + "/" + clientToken + " HTTP/1.1" + CRLF);
+                    out.print("POST /game/stream/" + gameId + " HTTP/1.1" + CRLF);
                     out.print("Host: localhost:" + serverPort + CRLF);
                     out.print("Transfer-Encoding: chunked" + CRLF);
                     out.print("Connection: keep-alive" + CRLF);
                     out.print("User-Agent: MineTest" + CRLF);
+                    out.print("Authorization: Token " + clientToken + CRLF);
                     out.print("Accept: */*" + CRLF);
                     out.print(CRLF);
                     out.flush();

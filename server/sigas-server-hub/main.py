@@ -5,16 +5,10 @@ import time
 
 import waitress
 
-from sigas_server_hub.actions.token_actions import TokenActions
-from sigas_server_hub.actions.user_actions import UserActions
-from sigas_server_hub.app_context import AppContext
-from sigas_server_hub.apps import app_external, app_internal, set_app_context
-from sigas_server_hub.actions.status_actions import StatusActions
-from sigas_server_hub.actions.game_actions import GameActions
-from sigas_server_hub.game.game_manager import GameManager
-from sigas_server_hub.sessions import SessionManager
-from sigas_server_hub.tokens import TokenManager
-from sigas_server_hub.users import UserManager
+from sigas_server_hub.game.kubernetes_game_manager import KubernetesGameManager
+from sigas_server_hub.game.test_game_manager import TestGameManager
+from sigas_server_hub.sigas_hub import SigasHub
+from sigas_server_hub.flask_apps import app_external, app_internal, set_hub
 
 parser = argparse.ArgumentParser(description="Sigas-Alpha hub")
 parser.add_argument("--external-port", dest="external_port", default=None, required=True, help="External port to listen on")
@@ -23,6 +17,8 @@ parser.add_argument("--token-file", dest="token_file", default=None, required=Tr
 parser.add_argument("--users-file", dest="users_file", default=None, required=True, help="File to persist user details")
 parser.add_argument("--expunge-trigger-ratio", dest="expunge_trigger_ratio", default=1, help="Expunge ratio for tokens")
 parser.add_argument("--expunge-interval", dest="expunge_interval", default=60, help="Expunge interval in seconds for tokens")
+
+parser.add_argument("--test-setup", action="store_true")
 
 parser.add_argument("-v", "--verbose", action="count", default=0)
 parser.add_argument("-q", "--quiet", action="store_true")
@@ -65,30 +61,18 @@ internal_port = args.internal_port
 token_file = args.token_file
 users_file = args.users_file
 
-
-app_context = AppContext(token_file, users_file, args.expunge_trigger_ratio)
-set_app_context(app_context)
-
-
-logger.info(f"Starting server at port {external_port}...")
-threading.Thread(
-    target=lambda: waitress.serve(app_external, host="0.0.0.0", port=external_port), daemon=True
-).start()
-logger.info(f"Started server at port {external_port}.")
-
-logger.info(f"Starting server at port {internal_port}...")
-threading.Thread(
-    target=lambda: waitress.serve(app_internal, host="0.0.0.0", port=internal_port), daemon=True
-).start()
-logger.info(f"Started server at port {internal_port}.")
-
-
 expunge_interval = args.expunge_interval
 
-last_expunge_checked = time.time()
-while True:  # Add option for this to be completed
-    time.sleep(1)
-    if time.time() - last_expunge_checked >= expunge_interval:
-        app_context.token_manager.check_for_expunge()
-        app_context.user_manager.check_for_expunge()
-        last_expunge_checked = time.time()
+sigas_hub = SigasHub(
+    app_external, app_internal,
+    external_port, internal_port,
+    token_file=token_file,
+    users_file=users_file,
+    expunge_trigger_ratio=args.expunge_trigger_ratio,
+    expunge_interval=expunge_interval,
+    game_manager_class=TestGameManager if args.test_setup else KubernetesGameManager)
+
+set_hub(sigas_hub)
+
+
+sigas_hub.start()

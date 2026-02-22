@@ -2,13 +2,9 @@ import json
 import os.path
 import time
 from datetime import datetime, UTC
-from typing import Optional, Sequence
+from typing import Optional
 
-from sigas_server_hub.apps import fast_random_hash
-
-
-TOKEN_LENGTH = 12
-Permissions = Sequence[str]
+from sigas_server_hub.utils import fast_random_hash, TOKEN_LENGTH, Permissions
 
 
 class Token:
@@ -16,6 +12,7 @@ class Token:
                  lifespan: float,
                  permissions: Optional[Permissions] = None,
                  note: str = "",
+                 user_id: Optional[str] = None,
                  temporary: bool = False) -> None:
         self._token = fast_random_hash(TOKEN_LENGTH)
         self._created_at = time.time()
@@ -24,6 +21,7 @@ class Token:
         self._temporary = temporary
         self.permissions: frozenset[str] = frozenset(permissions) if permissions is not None else {}
         self._note = note
+        self._user_id = user_id
 
     @property
     def is_temporary(self) -> bool:
@@ -48,6 +46,10 @@ class Token:
     def note(self) -> str:
         return self._note
 
+    @property
+    def user_id(self) -> Optional[str]:
+        return self._user_id
+
     def as_json(self) -> dict:
         return {
             "token": self._token,
@@ -56,7 +58,8 @@ class Token:
             "valid": self._valid,
             "note": self._note,
             "permissions": list(self.permissions),
-            **({"temporary": True} if self._temporary else {})
+            **({"temporary": True} if self._temporary else {}),
+            **({"user_id": True} if self._user_id is not None else {})
         }
 
     @classmethod
@@ -65,6 +68,7 @@ class Token:
         token._token = d["token"]
         token._created_at = datetime.fromisoformat(d["created_at"]).timestamp()
         token._valid = d["valid"]
+        token._user_id = d["user_id"] if "user_id" in d else None
 
         return token
 

@@ -32,10 +32,10 @@ class HTTPGameClient:
     def start(self) -> 'HTTPGameClient':
         self._do_run = True
 
-        url = f"{self.url}/{self.game_id}/{self.token}"
+        url = f"{self.url}/stream/{self.game_id}"
 
-        self._sending_thread = Thread(target=self._outbound_connection_loop, args=[url], daemon=True)
-        self._receiving_thread = Thread(target=self._inbound_connection_loop, args=[url], daemon=True)
+        self._sending_thread = Thread(target=self._outbound_connection_loop, args=[url, self.token], daemon=True)
+        self._receiving_thread = Thread(target=self._inbound_connection_loop, args=[url, self.token], daemon=True)
 
         self._sending_thread.start()
         self._receiving_thread.start()
@@ -49,12 +49,12 @@ class HTTPGameClient:
 
         return self
 
-    def _outbound_connection_loop(self, url: str) -> None:
+    def _outbound_connection_loop(self, url: str, token: str) -> None:
         self._sending_thread_running = True
         try:
             while self._do_run:
                 try:
-                    requests.post(url, data=self._message_generator())
+                    requests.post(url, headers={"Authorization": f"Token {token}", "Transfer-Encoding": "chunked"}, data=self._message_generator())
                 except Exception as e:
                     logger.warning(f"Got exception in outbound loop; {e}", exc_info=True)
         finally:
@@ -69,12 +69,12 @@ class HTTPGameClient:
             except Empty:
                 pass
 
-    def _inbound_connection_loop(self, url: str) -> None:
+    def _inbound_connection_loop(self, url: str, token: str) -> None:
         self._receiving_thread_running = True
         try:
             while self._do_run:
                 try:
-                    r = requests.get(url, data='', stream=True)
+                    r = requests.get(url, headers={"Authorization": f"Token {token}", "Transfer-Encoding": "chunked"}, data='', stream=True)
                     for chunk in (r.raw.read_chunked()):
                         typ = chunk[0:4].decode("ASCII")
                         l = struct.unpack(">i", chunk[4:8])[0]

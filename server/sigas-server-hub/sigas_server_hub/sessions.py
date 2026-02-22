@@ -1,7 +1,7 @@
 import time
 from typing import Optional
 
-from sigas_server_hub.apps import fast_random_hash
+from sigas_server_hub.utils import fast_random_hash
 
 
 class Session(dict):

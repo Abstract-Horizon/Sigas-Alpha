@@ -3,7 +3,7 @@ from typing import Optional
 
 from flask import Flask, Response, Request
 
-from sigas_server_hub.apps import external_route, internal_route
+from sigas_server_hub.flask_apps import external_route, internal_route
 from sigas_server_hub.sessions import SessionManager
 from sigas_server_hub.tokens import TokenManager
 from sigas_server_hub.web_actions import WebActions
@@ -45,3 +45,6 @@ class TokenActions(WebActions):
     @internal_route("/token", methods=["GET"])
     def get_tokens(self) -> Response:
         return self.json_response(body=[token.as_json() for token in (self.token_manager.tokens.values())])
+
+    def invalidate_token(self) -> Response:
+        pass
