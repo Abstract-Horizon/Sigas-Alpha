@@ -76,9 +76,9 @@ class TestHTTPGameServer(unittest.TestCase):
 
         self._setup_game()
 
-        self.master_http_client = HTTPGameClient(f"http://localhost:{self.server_port}/game", "333", "1234").start()
-        self.client1_http_client = HTTPGameClient(f"http://localhost:{self.server_port}/game", "333", "1235").start()
-        self.client2_http_client = HTTPGameClient(f"http://localhost:{self.server_port}/game", "333", "1236").start()
+        self.master_http_client = HTTPGameClient(f"http://localhost:{self.server_port}/game", "333", "1234").start_stream()
+        self.client1_http_client = HTTPGameClient(f"http://localhost:{self.server_port}/game", "333", "1235").start_stream()
+        self.client2_http_client = HTTPGameClient(f"http://localhost:{self.server_port}/game", "333", "1236").start_stream()
 
         self.master_messages = []
         self.client1_messages = []

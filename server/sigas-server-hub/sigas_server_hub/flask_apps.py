@@ -103,7 +103,7 @@ def route(
     return decorator
 
 
-def permissions(permissions: list[Union[str, tuple[str]]]):
+def permissions(permissions: list[Union[str, tuple[str]]] = None):
 
     def decorator(func: Callable):
 
@@ -123,7 +123,7 @@ def permissions(permissions: list[Union[str, tuple[str]]]):
             if token is None:
                 return error(401, "Not authorised")
 
-            if len(token.permissions & set(permissions)) == 0:
+            if permissions is not None and len(permissions) > 0 and len(token.permissions & set(permissions)) == 0:
                 return error(401, "Not authorised; not enough permissions")
 
             g.token = token

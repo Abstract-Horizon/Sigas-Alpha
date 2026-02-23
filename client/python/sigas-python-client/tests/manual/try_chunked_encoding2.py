@@ -59,9 +59,9 @@ requests.post('http://localhost:8082/game/333/client', data='{"token": "1236", "
 
 requests.put('http://localhost:8082/game/333/start', data='')
 
-master_http_client = HTTPGameClient("http://localhost:8081/game", "333", "1234").start()
-client1_http_client = HTTPGameClient("http://localhost:8081/game", "333", "1235").start()
-client2_http_client = HTTPGameClient("http://localhost:8081/game", "333", "1236").start()
+master_http_client = HTTPGameClient("http://localhost:8081", "1234").start_stream("333", "1234")
+client1_http_client = HTTPGameClient("http://localhost:8081", "1235").start_stream("333", "1235")
+client2_http_client = HTTPGameClient("http://localhost:8081", "1236").start_stream("333", "1236")
 
 
 master_messages = []

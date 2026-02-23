@@ -2,17 +2,22 @@ import socket
 import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor
+from logging import getLogger
 from pathlib import Path
 from queue import Queue, Empty
 from threading import Thread
 from typing import Optional, Any, Generator
+
+import requests
+
+logger = getLogger(__name__)
 
 
 class BrokerSetup:
     def __init__(self, server_port: Optional[int] = None, internal_port: Optional[int] = None, hub_port: Optional[int] = None) -> None:
         self.finished = False
         self.project_root = Path(__file__).parent.absolute()
-        self.broker_home = (self.project_root.parent / "server" / "sigas-server-broker").absolute()
+        self.broker_home = (self.project_root.parent.parent.parent / "sigas-server-broker").absolute()
         self.jar_file = self.broker_home / "target" / "sigas-broker-0.0.1-SNAPSHOT.jar"
 
         self.server_port = server_port if server_port is not None else self._find_free_port()
@@ -43,6 +48,10 @@ class BrokerSetup:
         self.broker_in_thread.start()
 
     def stop(self) -> None:
+        try:
+            requests.post(f"http://localhost:{self.internal_port}/stop")
+        except:
+            pass
         self.finished = True
         self.broker_in_thread.join(1)
 
@@ -55,16 +64,19 @@ class BrokerSetup:
         return port
 
     def _broker_in(self) -> None:
-        return_code = self.broker_process.returncode
-        while return_code is None and not self.finished:
-            for out_line, err_line in self._read_popen_pipes(self.broker_process):
-                if err_line is not None and err_line != "":
-                    print(f"Broker: {err_line}", end='' if err_line.endswith("\n") else '')
-                if out_line is not None and out_line != "":
-                    print(f"Broker: {out_line}", end='' if err_line.endswith("\n") else '')
-                if out_line == "" and err_line == "":
-                    time.sleep(0.25)
-            return_code = self.broker_process.poll()
+        try:
+            return_code = self.broker_process.returncode
+            while return_code is None and not self.finished:
+                for out_line, err_line in self._read_popen_pipes(self.broker_process):
+                    if err_line is not None and err_line != "":
+                        print(f"Broker: {err_line}", end='' if err_line.endswith("\n") else '')
+                    if out_line is not None and out_line != "":
+                        print(f"Broker: {out_line}", end='' if err_line.endswith("\n") else '')
+                    if out_line == "" and err_line == "":
+                        time.sleep(0.25)
+                return_code = self.broker_process.poll()
+        finally:
+            logger.warning("Finished broker loop")
 
     @staticmethod
     def _enqueue_output(file, queue: Queue) -> None:

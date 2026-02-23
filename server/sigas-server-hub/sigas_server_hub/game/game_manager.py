@@ -18,7 +18,7 @@ class Player:
 class Game:
     def __init__(self, game_manager: 'GameManager', game_name: str, master_player: Player) -> None:
         self.game_manager = game_manager
-        self.game_id = fast_random_hash(TOKEN_LENGTH)
+        self.game_id = "G_" + fast_random_hash(TOKEN_LENGTH)
         self.game_name = game_name
         self.server: Optional['Server'] = None
         self.master_player = master_player
@@ -32,6 +32,10 @@ class Game:
         self.server.remove_game(self)
 
     def add_player(self, player: Player) -> Player:
+        for p in self.players.values():
+            if p.player_token == player.player_token:
+                return p
+
         player.player_id = f"{self.next_player_id:02x}"
         self.next_player_id += 1
 
@@ -41,6 +45,10 @@ class Game:
 
         self.server.add_player(player)
         return player
+
+    def start(self) -> 'Game':
+        self.server.start_game(self)
+        return self
 
 
 class Server:
@@ -60,7 +68,7 @@ class Server:
     def add_game(self, game: Game) -> None:
         player = game.master_player
         body = {
-            "master_token": player.player_id,
+            "master_token": player.player_token,
             "client_id": player.player_id
         }
         requests.post(f"{self._internal_url()}/game/{game.game_id}", json=body)
@@ -68,6 +76,10 @@ class Server:
     def remove_game(self, game: Game) -> None:
         # TODO - remove body
         requests.delete(f"{self._internal_url()}/game/{game.game_id}", json={})
+
+    def start_game(self, game: Game) -> None:
+        # TODO - remove body
+        requests.put(f"{self._internal_url()}/game/{game.game_id}/start", json={})
 
     def add_player(self, player: Player) -> None:
         body = {
@@ -87,6 +99,7 @@ class GameManager(ABC):
 
     def create_game(self, game_name: str, master_player: Player) -> Game:
         game = Game(self, game_name, master_player)
+        self.games[game.game_id] = game
         server = self.provision_server(game)
 
         game.server = server

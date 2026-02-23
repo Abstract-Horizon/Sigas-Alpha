@@ -81,6 +81,11 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
             } else {
                 System.err.println(gameId + ":- Not found '" + routeKey + "'");
             }
+        } else if (path.equals("/stop") && method.toUpperCase().equals("POST")) {
+            broker.stop();
+            System.err.println("Stopping server...");
+            createSimpleResponse(key, 200, "OK", "Stopping...");
+            return;
         }
 
         createSimpleResponse(key, 404, "NOT FOUND", "Method " + method + ", path " + path + " not found");

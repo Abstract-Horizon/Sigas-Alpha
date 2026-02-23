@@ -1,14 +1,9 @@
 import argparse
 import logging
-import threading
-import time
-
-import waitress
 
 from sigas_server_hub.game.kubernetes_game_manager import KubernetesGameManager
 from sigas_server_hub.game.test_game_manager import TestGameManager
 from sigas_server_hub.sigas_hub import SigasHub
-from sigas_server_hub.flask_apps import app_external, app_internal, set_hub
 
 parser = argparse.ArgumentParser(description="Sigas-Alpha hub")
 parser.add_argument("--external-port", dest="external_port", default=None, required=True, help="External port to listen on")
@@ -64,15 +59,12 @@ users_file = args.users_file
 expunge_interval = args.expunge_interval
 
 sigas_hub = SigasHub(
-    app_external, app_internal,
     external_port, internal_port,
     token_file=token_file,
     users_file=users_file,
     expunge_trigger_ratio=args.expunge_trigger_ratio,
     expunge_interval=expunge_interval,
     game_manager_class=TestGameManager if args.test_setup else KubernetesGameManager)
-
-set_hub(sigas_hub)
 
 
 sigas_hub.start()

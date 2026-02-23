@@ -14,7 +14,7 @@ class TestGameManager(GameManager):
         return self.server
 
     def close_server(self) -> None:
-        pass
+        self.broker_setup.stop()
 
     def game_url(self, game: Game) -> str:
-        return f"http://localhost:{self.broker_setup.server_port}/game/{game.game_id}"
+        return f"http://localhost:{self.broker_setup.server_port}/game/stream/{game.game_id}"

@@ -7,6 +7,8 @@ from queue import Queue, Empty
 from threading import Thread
 from typing import Optional, Any, Generator
 
+from tests.test_utils import find_free_port
+
 
 class BrokerSetup:
     def __init__(self, server_port: Optional[int] = None, internal_port: Optional[int] = None, hub_port: Optional[int] = None) -> None:
@@ -15,9 +17,9 @@ class BrokerSetup:
         self.broker_home = (self.project_root.parent.parent.parent.parent / "server" / "sigas-server-broker").absolute()
         self.jar_file = self.broker_home / "target" / "sigas-broker-0.0.1-SNAPSHOT.jar"
 
-        self.server_port = server_port if server_port is not None else self._find_free_port()
-        self.internal_port = internal_port if internal_port is not None else self._find_free_port()
-        self.hub_port = hub_port if hub_port is not None else self._find_free_port()
+        self.server_port = server_port if server_port is not None else find_free_port()
+        self.internal_port = internal_port if internal_port is not None else find_free_port()
+        self.hub_port = hub_port if hub_port is not None else find_free_port()
 
         self.broker_process = None
         self.broker_in_thread = Thread(target=self._broker_in, daemon=True)
@@ -45,14 +47,6 @@ class BrokerSetup:
     def stop(self) -> None:
         self.finished = True
         self.broker_in_thread.join(1)
-
-    @staticmethod
-    def _find_free_port() -> int:
-        _socket = socket.socket()
-        _socket.bind(('', 0))
-        port = _socket.getsockname()[1]
-        _socket.close()
-        return port
 
     def _broker_in(self) -> None:
         return_code = self.broker_process.returncode
