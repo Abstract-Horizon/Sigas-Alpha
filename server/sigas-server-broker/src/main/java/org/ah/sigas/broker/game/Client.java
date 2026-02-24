@@ -63,9 +63,11 @@ public class Client {
     }
 
     public void sendMessage(Message message) throws IOException {
+        messagesToSend.add(message);
         if (clientOutboundHandler != null) {
-            messagesToSend.add(message);
             ((ClientOutboundHandlerImpl)clientOutboundHandler).clientHasMessages();
+        // } else {
+        //     log("Got message " + message.getType() + " but no clientOutboundHandler");
         }
     }
 
