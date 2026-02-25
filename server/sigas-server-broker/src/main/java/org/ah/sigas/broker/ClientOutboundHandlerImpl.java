@@ -56,8 +56,10 @@ public class ClientOutboundHandlerImpl extends BaseClientHandler {
             if (message != null) {
                 byte[] body = message.getBody();
                 buffer.clear();
-                buffer.put(Integer.toString(body.length + 8, 16).getBytes()).put(CRLF);
+                buffer.put(Integer.toString(body.length + 12, 16).getBytes()).put(CRLF);
                 buffer.put(message.getType().getBytes());
+                buffer.put(message.getFlags().getBytes());
+                buffer.put(message.getClientId().getBytes());
                 buffer.putInt(body.length);
                 buffer.put(body);
                 buffer.put(CRLF);

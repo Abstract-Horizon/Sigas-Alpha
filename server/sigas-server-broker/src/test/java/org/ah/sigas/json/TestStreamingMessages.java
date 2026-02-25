@@ -106,17 +106,15 @@ public class TestStreamingMessages {
                     out.print(CRLF);
                     out.flush();
 
-                    ByteBuffer heloBuffer = ByteBuffer.allocate(10);
-                    heloBuffer.put("HELO".getBytes());
-                    heloBuffer.putInt(2);
-                    heloBuffer.putShort((short)0);
+                    ByteBuffer heloBuffer = ByteBuffer.allocate(12);
+                    heloBuffer.put("HELO0000".getBytes());
+                    heloBuffer.putInt(0);
                     sendMessage(out, heloBuffer);
                     outputStream.flush();
 
-                    ByteBuffer pingBuffer = ByteBuffer.allocate(18);
-                    pingBuffer.put("PING".getBytes());
-                    pingBuffer.putInt(10);
-                    pingBuffer.putShort((short)0);
+                    ByteBuffer pingBuffer = ByteBuffer.allocate(20);
+                    pingBuffer.put("PING0000".getBytes());
+                    pingBuffer.putInt(8);
                     pingBuffer.putLong(System.currentTimeMillis());
                     sendMessage(out, pingBuffer);
                     outputStream.flush();
@@ -127,12 +125,12 @@ public class TestStreamingMessages {
                     byte[] msg2 = new byte[pingBuffer.array().length];
 
                     byte[] msg1Expected = heloBuffer.array();
-                    msg1Expected[8] = '0';
-                    msg1Expected[9] = '2';
+                    msg1Expected[6] = '0';
+                    msg1Expected[7] = '2';
 
                     byte[] msg2Expected = pingBuffer.array();
-                    msg2Expected[8] = '0';
-                    msg2Expected[9] = '2';
+                    msg2Expected[6] = '0';
+                    msg2Expected[7] = '2';
 
                     loadBuffer(masterInputStream, msg1);
                     assertArrayEquals(msg1Expected, msg1);

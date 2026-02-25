@@ -29,6 +29,7 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
     private boolean gracefulEnd = false;
 
     private byte[] messageType = new byte[4];
+    private byte[] messageHeader = new byte[4];
     private byte[] messageBytes;
     private int ptr = 0;
 
@@ -86,7 +87,7 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
         chunkLen -= l;
 
         if (ptr >= msgLen) {
-            client.receivedMessage(new String(messageType), messageBytes);
+            client.receivedMessage(new String(messageType), new String(messageHeader), messageBytes);
             return true;
         }
         return false;
@@ -95,7 +96,7 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
     private void parseMessage() throws IOException {
         while (pos < max && chunkLen > 0) {
             byte b = bytes[pos];
-            if (ms != 8) {
+            if (ms != 12) {
                 pos++;
                 chunkLen--;
             }
@@ -113,16 +114,28 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
                 messageType[3] = b;
                 ms = 4;
             } else if (ms == 4) {
-                ptr = 0;
-                msgLen = b;
+                messageHeader[0] = b;
                 ms = 5;
             } else if (ms == 5) {
-                msgLen = msgLen * 8 + b;
+                messageHeader[1] = b;
                 ms = 6;
             } else if (ms == 6) {
-                msgLen = msgLen * 8 + b;
+                messageHeader[2] = b;
                 ms = 7;
             } else if (ms == 7) {
+                messageHeader[3] = b;
+                ms = 8;
+            } else if (ms == 8) {
+                ptr = 0;
+                msgLen = b;
+                ms = 9;
+            } else if (ms == 9) {
+                msgLen = msgLen * 8 + b;
+                ms = 10;
+            } else if (ms == 10) {
+                msgLen = msgLen * 8 + b;
+                ms = 11;
+            } else if (ms == 11) {
                 msgLen = msgLen * 8 + b;
 
                 messageBytes = new byte[msgLen];
@@ -130,9 +143,9 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
                 if (readMessage()) {
                     ms = 0;
                 } else {
-                    ms = 8;
+                    ms = 12;
                 }
-            } else if (ms == 8) {
+            } else if (ms == 12) {
                 if (readMessage()) {
                     ms = 0;
                 }

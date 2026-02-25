@@ -47,19 +47,15 @@ public class Client {
 
     public LinkedList<Message> getMessagesToSend() { return messagesToSend; }
 
-    public void receivedMessage(String type, byte[] body) throws IOException {
-        if (body.length < 2) {
-            if (Broker.INFO) { log("ERROR: Received message from client but size is less than 2!"); }
-            return;
-        }
-        if (Broker.TRACE) { log("Received message '" + type + "': \n" + new String(body)); }
+    public void receivedMessage(String type, String header, byte[] body) throws IOException {
+        if (Broker.TRACE) { log("Received message '" + type + "'(" + header + "): \n" + new String(body)); }
 
         if (!master) {
-            body[0] = (byte)clientId.charAt(0);
-            body[1] = (byte)clientId.charAt(1);
+            // Overwrite client ID
+            header = header.substring(0, 2) + clientId.substring(0, 2);
         }
 
-        game.receivedMessage(this, Message.createMessage(type, body));
+        game.receivedMessage(this, Message.createMessage(type, header, body));
     }
 
     public void sendMessage(Message message) throws IOException {

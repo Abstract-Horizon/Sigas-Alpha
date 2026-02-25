@@ -12,52 +12,53 @@ from threading import Thread
 from hamcrest import assert_that, contains_exactly, less_than
 
 from sigas_alpha.client.http_game_client import HTTPGameClient
-from sigas_alpha.game.message.Message import MessageWithClientId, register_message_type
+from sigas_alpha.game.message.Message import Message, register_message_type
 from sigas_server_hub.game.test_game_manager import TestGameManager
 from sigas_server_hub.sigas_hub import SigasHub
 
 
-class HeloMessage(MessageWithClientId):
+class HeloMessage(Message):
     @classmethod
-    def from_body(cls, typ: str, body: bytes) -> 'HeloMessage': return HeloMessage(cls.extract_client_id(body))
+    def from_body(cls, typ: str, client_id: str, flags: str, body: bytes) -> 'HeloMessage': return HeloMessage(client_id, flags)
 
-    def __init__(self, client_id: str = "--"):
-        super().__init__("HELO", client_id)
+    def __init__(self, client_id: str = "--", flags: str = "  "):
+        super().__init__("HELO", client_id, flags)
 
 
 def _current_time() -> float:
     return float(int(time.time() * 1000) / 1000.0)
 
 
-class PingPongMessage(MessageWithClientId, ABC):
+class PingPongMessage(Message, ABC):
 
     @classmethod
-    def from_body(cls, typ: str, body: bytes) -> 'PingPongMessage':
+    def from_body(cls, typ: str, client_id: str, flags: str, body: bytes) -> 'PingPongMessage':
         if typ == "PING":
             real_cls = PingMessage
         else:
             real_cls = PongMessage
-        return real_cls(cls.extract_client_id(body), struct.unpack(">q", body[2:])[0] / 1000.0)
 
-    def __init__(self, typ: str, client_id: str = "--", time: float = _current_time()):
-        super().__init__(typ, client_id)
+        return real_cls(client_id, flags, struct.unpack(">q", body)[0] / 1000.0)
+
+    def __init__(self, typ: str, client_id: str = "--", flags: str = "  ", time: float = _current_time()):
+        super().__init__(typ, client_id, flags)
         self.time = time
 
     def body(self) -> bytes:
-        return self.client_id.encode("ascii") + struct.pack(">q", int(self.time * 1000))
+        return struct.pack(">q", int(self.time * 1000))
 
     def __repr__(self) -> str:
-        return f"{self.typ}({self.client_id}, {self.time})"
+        return f"{self.typ}[{self.flags}{self.client_id}]({self.time})"
 
 
 class PingMessage(PingPongMessage):
-    def __init__(self, client_id: str = "--", time: float = _current_time()):
-        super().__init__("PING", client_id, time)
+    def __init__(self, client_id: str = "--", flags: str = "  ", time: float = _current_time()):
+        super().__init__("PING", client_id, flags, time)
 
 
 class PongMessage(PingPongMessage):
-    def __init__(self, client_id: str = "--", time: float = _current_time()):
-        super().__init__("PONG", client_id, time)
+    def __init__(self, client_id: str = "--", flags: str = "  ", time: float = _current_time()):
+        super().__init__("PONG", client_id, flags, time)
 
 
 class TestHTTPGameServer(unittest.TestCase):
@@ -120,10 +121,6 @@ class TestHTTPGameServer(unittest.TestCase):
         while not self.finished:
             msg = client.get_message(True, 0.5)
             if msg is not None:
-                client_id = "-"
-                if isinstance(msg, MessageWithClientId):
-                    client_id = msg.client_id
-                print(f"{connection_type}: Client {client_id} received message {msg}")
                 messages_destination.append(msg)
             else:
                 time.sleep(0.1)

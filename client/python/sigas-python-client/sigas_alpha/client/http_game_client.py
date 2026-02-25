@@ -131,7 +131,8 @@ class HTTPGameClient:
                 message = self._send_queue.get(True, 0.1)
                 if message is not None:
                     body = message.body()
-                    yield message.typ.encode("ASCII") + struct.pack(">i", len(body)) + body
+                    complete_message = message.typ.encode("ASCII") + message.flags.encode("ASCII") + message.client_id.encode("ASCII") + struct.pack(">i", len(body)) + body
+                    yield complete_message
             except Empty:
                 pass
 
@@ -143,10 +144,12 @@ class HTTPGameClient:
                     r = requests.get(url, headers={"Authorization": f"Token {token}", "Transfer-Encoding": "chunked"}, data='', stream=True)
                     for chunk in (r.raw.read_chunked()):
                         typ = chunk[0:4].decode("ASCII")
+                        flags = chunk[4:6].decode("ASCII")
+                        client_id = chunk[6:8].decode("ASCII")
                         l = struct.unpack(">i", chunk[4:8])[0]
-                        body = chunk[8:8 + l]
+                        body = chunk[12:12 + l]
 
-                        message = create_message(typ, body)
+                        message = create_message(typ, client_id, flags, body)
                         self._receive_queue.put(message)
                 except Exception as e:
                     if self._do_run:

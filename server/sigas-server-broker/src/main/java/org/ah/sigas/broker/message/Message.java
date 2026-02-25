@@ -12,33 +12,27 @@ public abstract class Message {
     private String type;
     private byte[] body;
     private String clientId = null;
+    private String flags = null;
 
-    public Message(String type, byte[] body) {
+    public Message(String type, String header, byte[] body) {
         this.type = type;
+        this.flags = header.substring(0, 2);
+        this.clientId = header.substring(2, 4);
         this.body = body;
     }
 
     public String getType() { return type; }
     public byte[] getBody() { return body; }
-    public boolean isSystemMessage() { return type.charAt(0) == '!'; }
 
-    public String getClientId() {
-        if (clientId == null) {
-            if (body.length < 2) {
-                clientId = "--";
-            } else {
-                clientId = new String(body, 0, 2);
-            }
-        }
-        return clientId;
-    }
+    public String getFlags() { return this.flags; }
+    public String getClientId() { return this.clientId; }
 
     public static void registerMessageType(String msgType, Class<? extends Message> msgClass) {
         MESSAGE_TYPES.put(msgType, msgClass);
     }
 
     @SuppressWarnings("unchecked")
-    public static <T extends Message> T createMessage(String type, byte[] body) {
+    public static <T extends Message> T createMessage(String type, String header, byte[] body) {
         Class<? extends Message> cls = MESSAGE_TYPES.get(type);
 
         if (cls == null) {
@@ -46,9 +40,9 @@ public abstract class Message {
         }
 
         try {
-            Constructor<? extends Message> constructor = cls.getConstructor(String.class, byte[].class);
+            Constructor<? extends Message> constructor = cls.getConstructor(String.class, String.class, byte[].class);
 
-            return (T) constructor.newInstance(type, body);
+            return (T) constructor.newInstance(type, header, body);
         } catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
             throw new IllegalAccessError("Cannot make new instance of message with type '" + type + "'; " + e.getMessage());
         }
