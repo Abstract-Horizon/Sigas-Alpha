@@ -7,7 +7,7 @@ import struct
 from threading import Thread
 
 from sigas_alpha.client.http_game_client import HTTPGameClient
-from sigas_alpha.game.message.Message import Message, register_message_type
+from sigas_alpha.message import Message, register_message_type
 
 
 class HeloMessage(Message):

@@ -1,5 +1,6 @@
+import json
 from abc import ABC
-from typing import TypeVar
+from typing import TypeVar, Any
 
 
 class Message(ABC):
@@ -48,17 +49,49 @@ class UnknownMessage(Message):
         return self._typ
 
 
-T_EXTENDS_MESSAGE = TypeVar("T_EXTENDS_MESSAGE", bound=Message)
+class FixedTypeMessage(Message, ABC):
+    @staticmethod
+    def create_typ() -> str:
+        ...
 
 
-MESSAGE_TYPES: dict[str, T_EXTENDS_MESSAGE] = {}
+FixedTypeMessageExtension = TypeVar("FixedTypeMessageExtension", bound=FixedTypeMessage)
 
 
-def register_message_type(typ: str, cls: T_EXTENDS_MESSAGE) -> None:
+class ZeroLenMessage(FixedTypeMessage, ABC):
+    @classmethod
+    def from_body(cls, typ: str, client_id: str, flags: str, body: bytes) -> 'ZeroLenMessage': return cls(client_id, flags)
+
+    def __init__(self, client_id: str = "--", flags: str = "  "):
+        super().__init__(self.create_typ(), client_id, flags)
+
+
+class JsonMessage(FixedTypeMessage, ABC):
+    @classmethod
+    def from_body(cls, typ: str, client_id: str, flags: str, body: bytes) -> 'JsonMessage':
+        json_body = json.loads(body.decode("ascii"))
+        return cls(json_body, client_id, flags)
+
+    @staticmethod
+    def create_typ() -> str:
+        ...
+
+    def __init__(self, json_body: dict[str, Any], client_id: str = "--", flags: str = "  "):
+        super().__init__(self.create_typ(), client_id, flags)
+        self.json_body = json_body
+
+
+MessageExtension = TypeVar("MessageExtension", bound=Message)
+
+
+MESSAGE_TYPES: dict[str, MessageExtension] = {}
+
+
+def register_message_type(typ: str, cls: MessageExtension) -> None:
     MESSAGE_TYPES[typ] = cls
 
 
-def create_message(typ: str, client_id: str, flags: str, body: bytes) -> T_EXTENDS_MESSAGE:
+def create_message(typ: str, client_id: str, flags: str, body: bytes) -> MessageExtension:
     if typ in MESSAGE_TYPES:
         return MESSAGE_TYPES[typ].from_body(typ, client_id, flags, body)
 

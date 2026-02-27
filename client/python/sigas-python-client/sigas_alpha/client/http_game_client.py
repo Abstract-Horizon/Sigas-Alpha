@@ -8,7 +8,7 @@ from typing import Any, Generator, Optional
 import requests
 
 from sigas_alpha.game.game import Game
-from sigas_alpha.game.message.Message import create_message, T_EXTENDS_MESSAGE
+from sigas_alpha.message import create_message, MessageExtension
 from sigas_alpha.player import Player
 
 logger = logging.getLogger(__name__)
@@ -25,8 +25,8 @@ class HTTPGameClient:
         self._receiving_thread = None
         self._receiving_thread_running = False
         self._do_run = False
-        self._send_queue: Queue[T_EXTENDS_MESSAGE] = Queue()
-        self._receive_queue: Queue[T_EXTENDS_MESSAGE] = Queue()
+        self._send_queue: Queue[MessageExtension] = Queue()
+        self._receive_queue: Queue[MessageExtension] = Queue()
         self.game: Optional[Game] = None
         self.player: Optional[Player] = None
 
@@ -158,11 +158,11 @@ class HTTPGameClient:
             logger.warning(f"{token}: Finished inbound streaming loop")
             self._receiving_thread_running = False
 
-    def send_message(self, message: T_EXTENDS_MESSAGE) -> 'HTTPGameClient':
+    def send_message(self, message: MessageExtension) -> 'HTTPGameClient':
         self._send_queue.put(message)
         return self
 
-    def get_message(self, block: bool = True, timeout: float = None) -> Optional[T_EXTENDS_MESSAGE]:
+    def get_message(self, block: bool = True, timeout: float = None) -> Optional[MessageExtension]:
         try:
             return self._receive_queue.get(block, timeout)
         except Empty:

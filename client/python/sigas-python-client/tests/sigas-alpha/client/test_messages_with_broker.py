@@ -1,70 +1,21 @@
 import unittest
-from abc import ABC
 from typing import cast, Sequence
 
 import requests
 import time
-import struct
 from threading import Thread
 
-from hamcrest import assert_that, contains_exactly, is_, less_than
+from hamcrest import assert_that, contains_exactly, less_than
 
 from sigas_alpha.client.http_game_client import HTTPGameClient
-from sigas_alpha.game.message.Message import Message, register_message_type
+from sigas_alpha.message import PingMessage, PongMessage, HeloMessage
 from tests.utils.broker_setup import BrokerSetup
-
-
-class HeloMessage(Message):
-    @classmethod
-    def from_body(cls, typ: str, client_id: str, flags: str, body: bytes) -> 'HeloMessage': return HeloMessage(client_id, flags)
-
-    def __init__(self, client_id: str = "--", flags: str = "  "):
-        super().__init__("HELO", client_id, flags)
-
-
-def _current_time() -> float:
-    return float(int(time.time() * 1000) / 1000.0)
-
-
-class PingPongMessage(Message, ABC):
-
-    @classmethod
-    def from_body(cls, typ: str, client_id: str, flags: str, body: bytes) -> 'PingPongMessage':
-        if typ == "PING":
-            real_cls = PingMessage
-        else:
-            real_cls = PongMessage
-        return real_cls(client_id, flags, struct.unpack(">q", body)[0] / 1000.0)
-
-    def __init__(self, typ: str, client_id: str = "--", flags: str = "  ", time: float = _current_time()):
-        super().__init__(typ, client_id, flags)
-        self.time = time
-
-    def body(self) -> bytes:
-        return struct.pack(">q", int(self.time * 1000))
-
-    def __repr__(self) -> str:
-        return f"{self.typ}[{self.flags}{self.client_id}]({self.time})"
-
-
-class PingMessage(PingPongMessage):
-    def __init__(self, client_id: str = "--", flags: str = "  ", time: float = _current_time()):
-        super().__init__("PING", client_id, flags, time)
-
-
-class PongMessage(PingPongMessage):
-    def __init__(self, client_id: str = "--", flags: str = "  ", time: float = _current_time()):
-        super().__init__("PONG", client_id, flags, time)
 
 
 class TestHTTPGameServer(unittest.TestCase):
 
     def setUp(self) -> None:
         self.finished = False
-
-        register_message_type("HELO", HeloMessage)
-        register_message_type("PING", PingMessage)
-        register_message_type("PONG", PongMessage)
 
         self.broker = BrokerSetup()
         self.broker.start()
@@ -76,9 +27,9 @@ class TestHTTPGameServer(unittest.TestCase):
 
         self._setup_game()
 
-        self.master_http_client = HTTPGameClient(f"http://localhost:{self.server_port}/game", "333", "1234").start_stream()
-        self.client1_http_client = HTTPGameClient(f"http://localhost:{self.server_port}/game", "333", "1235").start_stream()
-        self.client2_http_client = HTTPGameClient(f"http://localhost:{self.server_port}/game", "333", "1236").start_stream()
+        self.master_http_client = HTTPGameClient(f"http://localhost:{self.server_port}/game", "1234").start_stream()
+        self.client1_http_client = HTTPGameClient(f"http://localhost:{self.server_port}/game", "1235").start_stream()
+        self.client2_http_client = HTTPGameClient(f"http://localhost:{self.server_port}/game", "1236").start_stream()
 
         self.master_messages = []
         self.client1_messages = []
@@ -86,11 +37,11 @@ class TestHTTPGameServer(unittest.TestCase):
 
         self.master_thread = Thread(target=self._receive_messages, args=[self.master_http_client, "master", self.master_messages], daemon=True)
         self.client1_thread = Thread(target=self._receive_messages, args=[self.client1_http_client, "client1", self.client1_messages], daemon=True)
-        self.clietn2_thread = Thread(target=self._receive_messages, args=[self.client2_http_client, "client2", self.client2_messages], daemon=True)
+        self.client2_thread = Thread(target=self._receive_messages, args=[self.client2_http_client, "client2", self.client2_messages], daemon=True)
 
         self.master_thread.start()
         self.client1_thread.start()
-        self.clietn2_thread.start()
+        self.client2_thread.start()
 
         time.sleep(0.1)
 
@@ -98,7 +49,7 @@ class TestHTTPGameServer(unittest.TestCase):
         self.finished = True
         self.master_thread.join(1)
         self.client1_thread.join(1)
-        self.clietn2_thread.join(1)
+        self.client2_thread.join(1)
         self.broker.stop()
 
     def _setup_game(self) -> None:
@@ -112,10 +63,6 @@ class TestHTTPGameServer(unittest.TestCase):
         while not self.finished:
             msg = client.get_message(True, 0.5)
             if msg is not None:
-                client_id = "-"
-                if isinstance(msg, MessageWithClientId):
-                    client_id = msg.client_id
-                print(f"{connection_type}: Client {client_id} received message {msg}")
                 messages_destination.append(msg)
             else:
                 time.sleep(0.1)
