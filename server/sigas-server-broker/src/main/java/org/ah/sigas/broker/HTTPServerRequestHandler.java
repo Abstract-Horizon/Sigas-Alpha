@@ -41,7 +41,7 @@ public class HTTPServerRequestHandler extends HTTPRequestHandler {
 
             String token = authorizationHeader.substring(6);
 
-            String prefix = gameId + ":" + token + " ";
+            String prefix = gameId + "::" + token + " ";
 
             Game game = broker.getGames().get(gameId);
 
@@ -85,7 +85,7 @@ public class HTTPServerRequestHandler extends HTTPRequestHandler {
                             clientInboundHandlerImpl.getBuffer().put(bytes, pos, initalReadCount);
                             clientInboundHandlerImpl.processInput(key, channel, initalReadCount);
                         }
-                        if (Broker.DEBUG) { System.out.println(gameId + ":" + token + " Got inbound connection"); }
+                        if (Broker.DEBUG) { System.out.println(gameId + ":" + client.getClientId() + ":" + token + " Got inbound connection"); }
 
                     } else if (method.equals("GET")) {
                         String contentLength = headers.get("content-length");
@@ -106,7 +106,7 @@ public class HTTPServerRequestHandler extends HTTPRequestHandler {
 
                         key.attach(outboundHandler);
                         outboundHandler.open(key);
-                        if (Broker.DEBUG) { System.out.println(gameId + ":" + token + " Got outbound connection"); }
+                        if (Broker.DEBUG) { System.out.println(gameId + ":" + client.getClientId() + ":" + token + " Got outbound connection"); }
                     }
                     return;
                 }

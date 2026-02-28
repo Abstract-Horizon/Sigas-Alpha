@@ -72,7 +72,7 @@ public class Client {
     }
 
     public void log(String msg, boolean error) {
-        String prefix = game.getGameId() + ":" + token + " ";
+        String prefix = game.getGameId() + ":" + clientId + " ";
 
         if (error) {
             System.err.println(prefix + msg);

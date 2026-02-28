@@ -118,7 +118,7 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
             Client client = new Client(game, masterToken, id, true);
             game.addClient(client);
 
-            if (Broker.INFO) { System.out.println(gameId + ":" + client.getToken() + " Game created."); }
+            if (Broker.INFO) { System.out.println(gameId + ":" + client.getClientId() + ":" + client.getToken() + " Game created."); }
 
             createSimpleResponse(key, 204, "OK");
 
@@ -166,7 +166,7 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
 
             for (Client client : game.getClients().values()) {
                 if (client.getToken().equals(token)) {
-                    if (Broker.INFO) { System.out.println(gameId + ":" + token + " Client with same token already exists for game"); }
+                    if (Broker.INFO) { System.out.println(gameId + ":" + client.getClientId() + ":" + token + " Client with same token already exists for game"); }
                     createSimpleResponse(key, 304, "NOT MODIFIED");
                     return;
                 }
@@ -175,7 +175,7 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
             Client client = new Client(game, token, id, false);
             game.addClient(client);
 
-            if (Broker.INFO) { System.out.println(gameId + ":" + client.getToken() + " Added client to game"); }
+            if (Broker.INFO) { System.out.println(gameId + ":" + client.getClientId() + ":" + client.getToken() + " Added client to game"); }
 
             createSimpleResponse(key, 204, "OK");
         } catch (ErrorAlreadySent ignore) {

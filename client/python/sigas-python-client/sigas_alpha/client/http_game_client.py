@@ -8,14 +8,18 @@ from typing import Any, Generator, Optional
 import requests
 
 from sigas_alpha.game.game import Game
-from sigas_alpha.message import create_message, MessageExtension
+from sigas_alpha.message import create_message, MessageExtension, HeloMessage, HeartBeatMessage
 from sigas_alpha.player import Player
 
 logger = logging.getLogger(__name__)
 
 
 class HTTPGameClient:
-    def __init__(self, api_url: str, api_token: str) -> None:
+    def __init__(self,
+                 api_url: str,
+                 api_token: str,
+                 heartbeat_period: float = 2.0
+                 ) -> None:
         self.api_url = api_url
         self.api_token = api_token
         self.stream_url = ""
@@ -27,8 +31,14 @@ class HTTPGameClient:
         self._do_run = False
         self._send_queue: Queue[MessageExtension] = Queue()
         self._receive_queue: Queue[MessageExtension] = Queue()
+        self.game_master = False
         self.game: Optional[Game] = None
         self.player: Optional[Player] = None
+
+        self.heartbeat_next_sequence = 0
+        self.heartbeat_period = heartbeat_period
+        self.last_heartbeat_time = 0
+        self.heartbeat_received = False
 
     def create_game(self, game_name: str, alias: Optional[str] = None) -> tuple[Game, Player]:
         request_body = {
@@ -54,6 +64,9 @@ class HTTPGameClient:
 
         self.game = Game(game_id, game_name, self.stream_url)
         self.game.master_player = self.player
+        self.game_master = True
+
+        self.last_heartbeat_time = time.time()
         return self.game, self.player
 
     def join_game(self, game_id: str, alias: Optional[str] = None) -> tuple[Game, Player]:
@@ -77,6 +90,9 @@ class HTTPGameClient:
         self.player = Player(player_body["player_id"], player_body["alias"])
 
         self.game = Game(game_id, game_name, self.stream_url)
+
+        self._send_queue.put(HeloMessage())
+        self.last_heartbeat_time = time.time()
         return self.game, self.player
 
     def start_game(self) -> 'HTTPGameClient':
@@ -84,7 +100,7 @@ class HTTPGameClient:
             raise ValueError("Need to create game first")
 
         # TODO remove body
-        response = requests.post(f"{self.api_url}/game/{self.game.game_id}/join", headers={"Authorization": f"Token {self.api_token}"}, json={})
+        response = requests.post(f"{self.api_url}/game/{self.game.game_id}/start", headers={"Authorization": f"Token {self.api_token}"}, json={})
 
     def start_stream(self) -> 'HTTPGameClient':
         if self.game is None:
@@ -131,8 +147,19 @@ class HTTPGameClient:
                 message = self._send_queue.get(True, 0.1)
                 if message is not None:
                     body = message.body()
-                    complete_message = message.typ.encode("ASCII") + message.flags.encode("ASCII") + message.client_id.encode("ASCII") + struct.pack(">i", len(body)) + body
+                    complete_message = message.typ.encode("ASCII") + message.flags.encode("ASCII") + message.client_id.encode("ASCII") + struct.pack(">I", len(body)) + body
                     yield complete_message
+                if self.game_master:
+                    now = time.time()
+                    if self.last_heartbeat_time + self.heartbeat_period < now:
+                        if not self.heartbeat_received:
+                            # TODO what to do if we haven't got
+                            pass
+
+                        self.last_heartbeat_time = now
+                        self.heartbeat_next_sequence += 1
+                        self.heartbeat_received = False
+                        self._send_queue.put(HeartBeatMessage(self.heartbeat_next_sequence))
             except Empty:
                 pass
 
@@ -146,11 +173,19 @@ class HTTPGameClient:
                         typ = chunk[0:4].decode("ASCII")
                         flags = chunk[4:6].decode("ASCII")
                         client_id = chunk[6:8].decode("ASCII")
-                        l = struct.unpack(">i", chunk[4:8])[0]
+                        l = struct.unpack(">I", chunk[4:8])[0]
                         body = chunk[12:12 + l]
 
                         message = create_message(typ, client_id, flags, body)
-                        self._receive_queue.put(message)
+                        if isinstance(message, HeartBeatMessage):
+                            if self.heartbeat_next_sequence == message.sequence:
+                                self.heartbeat_received = True
+                            else:
+                                # TODO what to do if we received older or newer message
+                                pass
+
+                        else:
+                            self._receive_queue.put(message)
                 except Exception as e:
                     if self._do_run:
                         logger.warning(f"Got exception in inbound loop; {e}", exc_info=True)

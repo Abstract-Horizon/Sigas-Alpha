@@ -12,9 +12,17 @@ class HeloMessage(ZeroLenMessage):
     def create_typ() -> str: return "HELO"
 
 
-class HeartBeatMessage(ZeroLenMessage):
-    @staticmethod
-    def create_typ() -> str: return "HRTB"
+class HeartBeatMessage(Message):
+    @classmethod
+    def from_body(cls, typ: str, client_id: str, flags: str, body: bytes) -> 'HeartBeatMessage':
+        return HeartBeatMessage(struct.unpack(">H", body[:2])[0], client_id, flags)
+
+    def __init__(self, sequence: int, client_id: str = "--", flags: str = "  "):
+        super().__init__("HRTB", client_id, flags)
+        self.sequence = sequence % 65536
+
+    def body(self) -> bytes:
+        return struct.pack(">H", self.sequence)
 
 
 class JoinMessage(JsonMessage):
@@ -94,7 +102,6 @@ def _register_classes(*cls: FixedTypeMessageExtension) -> None:
 
 _register_classes(
     HeloMessage,
-    HeartBeatMessage,
     JoinMessage,
     LeftMessage,
     ClientDisconnectedMessage,
@@ -104,5 +111,6 @@ _register_classes(
     PrivateMsgMessage
 )
 
+register_message_type("HRTB", HeartBeatMessage)
 register_message_type("PING", PingMessage)
 register_message_type("PONG", PongMessage)
