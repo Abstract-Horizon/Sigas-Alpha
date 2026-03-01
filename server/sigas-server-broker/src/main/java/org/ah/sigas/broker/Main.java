@@ -2,6 +2,8 @@ package org.ah.sigas.broker;
 
 import java.net.URI;
 
+import org.ah.sigas.broker.message.Messages;
+
 public class Main {
 
     public static void main(String[] args) throws Exception {
@@ -49,6 +51,8 @@ public class Main {
 
         System.out.println("Starting server on port " + serverPort + " and internal port " + internalPort);
         System.out.println("Configured hub uri as " +  uri);
+
+        Messages.registerAll();
 
         Broker broker = new Broker(serverPort, internalPort, uri);
         broker.loop();

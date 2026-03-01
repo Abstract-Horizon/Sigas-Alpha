@@ -9,7 +9,7 @@ from sigas_alpha.message.messages import (
 from sigas_alpha.message.system_messages import (
     HeloMessage,
     HeartBeatMessage,
-    JoinMessage,
+    JoinedMessage,
     LeftMessage,
     ClientDisconnectedMessage,
     ClientReconnectedMessage,

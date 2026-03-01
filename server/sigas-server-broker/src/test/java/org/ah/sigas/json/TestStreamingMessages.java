@@ -59,7 +59,8 @@ public class TestStreamingMessages {
                     """
                     {
                         "master_token": "1234",
-                        "client_id": "01"
+                        "client_id": "01",
+                        "alias": "game_master"
                     }
                     """).getResponseCode());
 
@@ -71,7 +72,8 @@ public class TestStreamingMessages {
                     """
                     {
                         "token": "1235",
-                        "client_id": "02"
+                        "client_id": "02",
+                        "alias": "player1"
                     }
                     """).getResponseCode());
 
@@ -106,6 +108,13 @@ public class TestStreamingMessages {
                     out.print(CRLF);
                     out.flush();
 
+
+                    byte[] joinJson = "{\"alias\":\"player1\",\"client_id\":\"02\"}".getBytes();
+                    ByteBuffer joinBuffer = ByteBuffer.allocate(12 + joinJson.length);
+                    joinBuffer.put("JOIN  01".getBytes());
+                    joinBuffer.putInt(joinJson.length);
+                    joinBuffer.put(joinJson);
+
                     ByteBuffer heloBuffer = ByteBuffer.allocate(12);
                     heloBuffer.put("HELO0000".getBytes());
                     heloBuffer.putInt(0);
@@ -121,22 +130,26 @@ public class TestStreamingMessages {
 
                     Thread.sleep(100);
 
-                    byte[] msg1 = new byte[heloBuffer.array().length];
-                    byte[] msg2 = new byte[pingBuffer.array().length];
-
-                    byte[] msg1Expected = heloBuffer.array();
+                    byte[] msg1Expected = joinBuffer.array();
                     msg1Expected[6] = '0';
                     msg1Expected[7] = '2';
 
-                    byte[] msg2Expected = pingBuffer.array();
+                    byte[] msg2Expected = heloBuffer.array();
                     msg2Expected[6] = '0';
                     msg2Expected[7] = '2';
 
-                    loadBuffer(masterInputStream, msg1);
+                    byte[] msg3Expected = pingBuffer.array();
+                    msg3Expected[6] = '0';
+                    msg3Expected[7] = '2';
+
+                    byte[] msg1 = loadBuffer(masterInputStream);
                     assertArrayEquals(msg1Expected, msg1);
 
-                    loadBuffer(masterInputStream, msg2);
+                    byte[] msg2 = loadBuffer(masterInputStream);
                     assertArrayEquals(msg2Expected, msg2);
+
+                    byte[] msg3 = loadBuffer(masterInputStream);
+                    assertArrayEquals(msg3Expected, msg3);
                 }
             }
             System.out.println("Finished");
@@ -145,12 +158,26 @@ public class TestStreamingMessages {
         }
     }
 
-    private static void loadBuffer(InputStream is, byte[] buf) throws IOException {
+    private static byte[] loadBuffer(InputStream is) throws IOException {
+        byte[] buf = new byte[12];
         int p = 0;
         while (p < buf.length) {
             int r = is.read(buf, p, buf.length - p);
             p += r;
         }
+        int len = 0;
+        for (int i = 0; i < 4; i++) {
+            len = len * 256 + buf[8 + i];
+        }
+
+        byte[] res = new byte[12 + len];
+        System.arraycopy(buf, 0, res, 0, 12);
+        p = 12;
+        while (p < res.length) {
+            int r = is.read(res, p, res.length - p);
+            p += r;
+        }
+        return res;
     }
 
     private static void sendMessage(PrintStream out, ByteBuffer buf) {

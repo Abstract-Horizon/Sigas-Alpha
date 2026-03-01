@@ -7,7 +7,7 @@ from typing import Any, Generator, Optional
 
 import requests
 
-from sigas_alpha.game.game import Game
+from sigas_alpha.game.game import Game, GameOptions
 from sigas_alpha.message import create_message, MessageExtension, HeloMessage, HeartBeatMessage
 from sigas_alpha.player import Player
 
@@ -40,10 +40,11 @@ class HTTPGameClient:
         self.last_heartbeat_time = 0
         self.heartbeat_received = False
 
-    def create_game(self, game_name: str, alias: Optional[str] = None) -> tuple[Game, Player]:
+    def create_game(self, game_name: str, alias: Optional[str] = None, game_options: GameOptions = GameOptions()) -> tuple[Game, Player]:
         request_body = {
             "name": game_name,
-            **({"alias": alias} if alias is not None else {})
+            **({"alias": alias} if alias is not None else {}),
+            "options": game_options.as_json()
         }
 
         response = requests.post(f"{self.api_url}/game", headers={"Authorization": f"Token {self.api_token}"}, json=request_body)
@@ -100,7 +101,8 @@ class HTTPGameClient:
             raise ValueError("Need to create game first")
 
         # TODO remove body
-        response = requests.post(f"{self.api_url}/game/{self.game.game_id}/start", headers={"Authorization": f"Token {self.api_token}"}, json={})
+        requests.post(f"{self.api_url}/game/{self.game.game_id}/start", headers={"Authorization": f"Token {self.api_token}"}, json={})
+        return self
 
     def start_stream(self) -> 'HTTPGameClient':
         if self.game is None:

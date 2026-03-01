@@ -10,6 +10,8 @@ import java.util.Map;
 
 import org.ah.sigas.broker.game.Client;
 import org.ah.sigas.broker.game.Game;
+import org.ah.sigas.broker.game.GameOptions;
+import org.ah.sigas.broker.message.JoinedMessage;
 import org.ah.sigas.json.JSONParser;
 
 
@@ -91,6 +93,7 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
         createSimpleResponse(key, 404, "NOT FOUND", "Method " + method + ", path " + path + " not found");
     }
 
+    @SuppressWarnings("unchecked")
     public void createGame(SelectionKey key, String gameId, String body) {
         try {
             JSONParser parser = new JSONParser(body);
@@ -104,7 +107,13 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
                 return;
             }
 
+            if (!res.containsKey("alias")) {
+                handleError(key, "Missing 'alias'");
+                return;
+            }
+
             String masterToken = (String)res.get("master_token");
+            String alias = (String)res.get("alias");
 
             String id = extractClientId(key, res);
 
@@ -113,9 +122,12 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
                 return;
             }
 
-            Game game = new Game(gameId);
+            GameOptions gameOptions = new GameOptions();
+            gameOptions.fromJSON((Map<String, Object>)res.get("options"));
+
+            Game game = new Game(gameId, gameOptions);
             broker.getGames().put(gameId, game);
-            Client client = new Client(game, masterToken, id, true);
+            Client client = new Client(game, masterToken, id, alias, true);
             game.addClient(client);
 
             if (Broker.INFO) { System.out.println(gameId + ":" + client.getClientId() + ":" + client.getToken() + " Game created."); }
@@ -155,7 +167,13 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
                 return;
             }
 
+            if (!res.containsKey("alias")) {
+                handleError(key, "Missing 'alias'");
+                return;
+            }
+
             String token = (String)res.get("token");
+            String alias = (String)res.get("alias");
             String id = extractClientId(key, res);
 
             Game game = broker.getGames().get(gameId);
@@ -172,12 +190,14 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
                 }
             }
 
-            Client client = new Client(game, token, id, false);
+            Client client = new Client(game, token, id, alias, false);
             game.addClient(client);
 
             if (Broker.INFO) { System.out.println(gameId + ":" + client.getClientId() + ":" + client.getToken() + " Added client to game"); }
 
             createSimpleResponse(key, 204, "OK");
+
+            game.getMasterClient().sendMessage(new JoinedMessage(client.getClientId(), client.getAlias()));
         } catch (ErrorAlreadySent ignore) {
         } catch (Exception e) {
             handleError(key, e);

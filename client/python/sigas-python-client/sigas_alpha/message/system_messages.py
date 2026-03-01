@@ -25,7 +25,7 @@ class HeartBeatMessage(Message):
         return struct.pack(">H", self.sequence)
 
 
-class JoinMessage(JsonMessage):
+class JoinedMessage(JsonMessage):
     @staticmethod
     def create_typ() -> str: return "JOIN"
 
@@ -102,7 +102,7 @@ def _register_classes(*cls: FixedTypeMessageExtension) -> None:
 
 _register_classes(
     HeloMessage,
-    JoinMessage,
+    JoinedMessage,
     LeftMessage,
     ClientDisconnectedMessage,
     ClientReconnectedMessage,

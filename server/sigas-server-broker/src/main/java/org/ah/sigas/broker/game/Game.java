@@ -17,15 +17,17 @@ public class Game {
     private String gameId;
     private Map<String, Client> clients = new HashMap<>();
 
-    private Client master;
+    private Client masterClient;
 
     private final long createdTimestamp = System.currentTimeMillis();
     private long lastActivity;
 
     private State state = State.CREATED;
+    private GameOptions gameOptions;
 
-    public Game(String gameId) {
+    public Game(String gameId, GameOptions gameOptions) {
         this.gameId = gameId;
+        this.gameOptions = gameOptions;
         lastActivity = createdTimestamp;
     }
 
@@ -36,7 +38,7 @@ public class Game {
     public void addClient(Client client) {
         clients.put(client.getClientId(), client);
         if (client.isMaster()) {
-            master = client;
+            masterClient = client;
         }
     }
 
@@ -46,15 +48,18 @@ public class Game {
 
     public void setState(State state) { this.state = state; }
 
+    public Client getMasterClient() { return masterClient; }
+
     public Map<String, Client> getClients() { return clients; }
 
+    public GameOptions getGameOptions() { return gameOptions; }
 
     public void touch() { lastActivity = System.currentTimeMillis(); }
 
 
     public void receivedMessage(Client client, Message message) throws IOException {
         if (!client.isMaster()) {
-            master.sendMessage(message);
+            masterClient.sendMessage(message);
         } else {
             String clientId = message.getClientId();
             if ("00".equals(clientId)) {

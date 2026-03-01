@@ -9,15 +9,15 @@ public abstract class Message {
 
     private static Map<String, Class<? extends Message>> MESSAGE_TYPES = new HashMap<>();
 
-    private String type;
-    private byte[] body;
-    private String clientId = null;
-    private String flags = null;
+    protected String type;
+    protected byte[] body;
+    protected String clientId = null;
+    protected String flags = null;
 
-    public Message(String type, String header, byte[] body) {
+    public Message(String type, String flags, String clientId, byte[] body) {
         this.type = type;
-        this.flags = header.substring(0, 2);
-        this.clientId = header.substring(2, 4);
+        this.flags = flags != null ? flags : flags;
+        this.clientId = clientId;
         this.body = body;
     }
 
@@ -40,9 +40,9 @@ public abstract class Message {
         }
 
         try {
-            Constructor<? extends Message> constructor = cls.getConstructor(String.class, String.class, byte[].class);
+            Constructor<? extends Message> constructor = cls.getConstructor(String.class, String.class, String.class, byte[].class);
 
-            return (T) constructor.newInstance(type, header, body);
+            return (T) constructor.newInstance(type, header.substring(0, 2), header.substring(2, 4), body);
         } catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
             throw new IllegalAccessError("Cannot make new instance of message with type '" + type + "'; " + e.getMessage());
         }

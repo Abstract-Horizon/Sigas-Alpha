@@ -1,7 +1,7 @@
 import random
 from typing import Optional
 
-from flask import Response, Request, g
+from flask import Response, g
 
 from sigas_server_hub.flask_apps import external_route, permissions
 from sigas_server_hub.game.game_manager import GameManager, Player
@@ -109,5 +109,6 @@ class GameActions(WebActions):
             "url": self.game_manager.game_url(game),
             "players": [
                 { "player_id": player.player_id, "alias": player.alias, } for player in game.players.values()
-            ]
+            ],
+            **({"options": body["options"]} if "options" in body else {})
         })
