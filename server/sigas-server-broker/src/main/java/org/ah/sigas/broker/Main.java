@@ -55,7 +55,12 @@ public class Main {
         Messages.registerAll();
 
         Broker broker = new Broker(serverPort, internalPort, uri);
-        broker.loop();
+        try {
+            broker.loop();
+        } catch (Throwable e) {
+            System.err.println("Got exception in main loop");
+            e.printStackTrace();
+        }
     }
 
     private static void error(String msg) {

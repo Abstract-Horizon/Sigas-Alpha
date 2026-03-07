@@ -6,7 +6,7 @@ import time
 from tempfile import TemporaryDirectory
 
 from sigas_alpha.client.http_game_client import HTTPGameClient
-from sigas_alpha.game.game import Game
+from sigas_alpha.game.game import Game, GameOptions
 from sigas_server_hub.game.test_game_manager import TestGameManager
 from sigas_server_hub.sigas_hub import SigasHub
 from sigas_server_hub.utils import Permissions
@@ -42,8 +42,8 @@ class TestClient:
         if self.receive_thread is not None:
             self.receive_thread.join(1)
 
-    def create_game(self, game_name: str, alias: str) -> Game:
-        self.game, _ = self.http_game_client.create_game(game_name, alias)
+    def create_game(self, game_name: str, alias: str, game_options: GameOptions = GameOptions()) -> Game:
+        self.game, _ = self.http_game_client.create_game(game_name, alias, game_options)
 
         self.http_game_client.start_game()
         self.http_game_client.start_stream()

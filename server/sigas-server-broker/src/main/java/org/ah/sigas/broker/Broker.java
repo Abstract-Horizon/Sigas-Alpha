@@ -59,9 +59,14 @@ public class Broker {
     public void loop() {
         try {
             init();
-        } catch (Exception e) {
+        } catch (Throwable e) {
             System.err.println("Failed to start server; " + e.getMessage());
             e.printStackTrace();
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e1) {
+                e1.printStackTrace();
+            }
             System.exit(1);
         }
 
@@ -85,14 +90,14 @@ public class Broker {
                                 write(key);
                             }
                         }
-                    } catch (Exception e) {
+                    } catch (Throwable e) {
                         System.err.println("*** Closing channel: error while handling selection key. Channel: " + key.channel() + "; " + e.getClass().getCanonicalName() + "(" + (e.getMessage() != null ? e.getMessage() : "") + ")");
                         e.printStackTrace();
                         closeChannel(key);
                     }
                 }
-            } catch (Exception e) {
-                System.err.println("Got exception " + e.getMessage());
+            } catch (Throwable e) {
+                System.err.println("Got exception in broker loop " + e.getMessage());
                 e.printStackTrace();
             }
         }
