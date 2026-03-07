@@ -44,7 +44,7 @@ class TestHTTPGameServer(unittest.TestCase):
 
         print("Waiting up to 10s...")
         started_time = time.time()
-        while time.time() - started_time < 10 and (len(self.master_client.messages) < 3 or len(self.player1_client.messages) < 1):
+        while time.time() - started_time < 10 and (len(self.master_client.messages) < 3 or len(self.player1_client.messages) < 2):
             time.sleep(0.1)
 
         # lasted = time.time() - started_time
@@ -56,7 +56,8 @@ class TestHTTPGameServer(unittest.TestCase):
             JoinedMessage({"client_id": "03", "alias": "player2"}, "03"), HeloMessage("03"),
             ping_message
         ]
-        expected_client1_messages = [pong_message]
+        expected_client1_messages = [JoinedMessage({"client_id": "03", "alias": "player2"}, "03"), pong_message]
+
         assert_that(cast(Sequence, self.master_client.messages), contains_exactly(*expected_master_messages), f"Got {self.master_client.messages}")
         assert_that(cast(Sequence, self.player1_client.messages), contains_exactly(*expected_client1_messages), f"Got {self.player1_client.messages}")
 

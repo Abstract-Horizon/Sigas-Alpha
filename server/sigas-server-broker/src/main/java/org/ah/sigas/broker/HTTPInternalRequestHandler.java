@@ -197,7 +197,13 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
 
             createSimpleResponse(key, 204, "OK");
 
-            game.getMasterClient().sendMessage(new JoinedMessage(client.getClientId(), client.getAlias()));
+            JoinedMessage joinedMessage = new JoinedMessage(client.getClientId(), client.getAlias());
+            // game.getMasterClient().sendMessage(joinedMessage);
+            for (Client c : game.getClients().values()) {
+                if (c != client) {
+                    c.sendMessage(joinedMessage);
+                }
+            }
         } catch (ErrorAlreadySent ignore) {
         } catch (Exception e) {
             handleError(key, e);
