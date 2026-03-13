@@ -1,7 +1,7 @@
 import base64
 from typing import Optional
 
-from flask import Flask, Response, Request
+from flask import Response
 
 from sigas_server_hub.flask_apps import external_route
 from sigas_server_hub.sessions import SessionManager

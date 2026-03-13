@@ -3,10 +3,10 @@ from typing import cast, Sequence
 
 import time
 
-from hamcrest import assert_that, contains_exactly, is_, greater_than_or_equal_to
+from hamcrest import assert_that, contains_exactly, greater_than_or_equal_to
 
 from sigas_alpha.game.game import GameOptions
-from sigas_alpha.message import PingMessage, PongMessage, HeloMessage, JoinedMessage
+from sigas_alpha.message import HeloMessage, JoinedMessage
 from sigas_alpha.message.system_messages import PlayerListMessage
 
 from tests.sigas_alpha.client.server_setup import TestServerSetup

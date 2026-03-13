@@ -12,7 +12,6 @@ HASH_LIMIT = 2 ** 48
 Permissions = Sequence[str]
 
 
-
 def fast_random_hash(size: int) -> str:
     return urlsafe_b64encode((hash(random.random()) % HASH_LIMIT).to_bytes(size, "big")).decode("UTF8").rstrip("=")
 

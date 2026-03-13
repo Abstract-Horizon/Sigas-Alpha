@@ -20,17 +20,17 @@ class Player:
 
 class GameOptions:
     @classmethod
-    def extract_int(cls, name: str, dict: OptionsType, default: int) -> int:
-        if name not in dict: return default
-        res = int(dict[name])
-        del dict[name]
+    def extract_int(cls, name: str, d: OptionsType, default: int) -> int:
+        if name not in d: return default
+        res = int(d[name])
+        del d[name]
         return res
 
     @classmethod
-    def extract_bool(cls, name: str, dict: OptionsType, default: bool) -> bool:
-        if name not in dict: return default
-        res = as_bool(dict[name])
-        del dict[name]
+    def extract_bool(cls, name: str, d: OptionsType, default: bool) -> bool:
+        if name not in d: return default
+        res = as_bool(d[name])
+        del d[name]
         return res
 
     def __init__(self, **kwargs) -> None:

@@ -33,8 +33,8 @@ def receive_client_input(client_id: str):
 
     for chunk in (r.raw.read_chunked()):
         typ = chunk[0:4].decode("ASCII")
-        len = struct.unpack(">I", chunk[4:8])[0]
-        body = chunk[8:8 + len]
+        l = struct.unpack(">I", chunk[4:8])[0]
+        body = chunk[8:8 + l]
         _received_client_id = str(body[:2])
         body = body[2:]
         print(f"Client {client_id} received message {typ} ({len}) from master; body='{body}'")

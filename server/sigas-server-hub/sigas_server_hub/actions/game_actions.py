@@ -108,7 +108,7 @@ class GameActions(WebActions):
             "game_name": game.game_name,
             "url": self.game_manager.game_url(game),
             "players": [
-                { "player_id": player.player_id, "alias": player.alias, } for player in game.players.values()
+                {"player_id": player.player_id, "alias": player.alias, } for player in game.players.values()
             ],
             **({"options": body["options"]} if "options" in body else {})
         })

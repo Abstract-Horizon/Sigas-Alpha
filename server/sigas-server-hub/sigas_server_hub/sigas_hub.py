@@ -3,7 +3,6 @@ from logging import getLogger
 from threading import Thread
 from typing import Optional
 
-import waitress
 from waitress.server import MultiSocketServer, create_server
 
 from sigas_server_hub.flask_apps import app_external, app_internal, set_hub

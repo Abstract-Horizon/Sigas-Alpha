@@ -1,10 +1,6 @@
-import base64
-from typing import Optional
+from flask import Response
 
-from flask import Flask, Response, Request
-
-from sigas_server_hub.flask_apps import external_route, internal_route
-from sigas_server_hub.sessions import SessionManager
+from sigas_server_hub.flask_apps import internal_route
 from sigas_server_hub.tokens import TokenManager
 from sigas_server_hub.web_actions import WebActions
 
