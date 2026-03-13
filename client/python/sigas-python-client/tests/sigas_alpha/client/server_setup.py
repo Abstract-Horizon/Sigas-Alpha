@@ -52,7 +52,7 @@ class TestClient:
         return self.game
 
     def join_name(self, game_id: str, alias: str) -> None:
-        self.http_game_client.join_game(game_id, alias)
+        self.game, _ = self.http_game_client.join_game(game_id, alias)
         self.http_game_client.start_stream()
         self.receive_thread = Thread(target=self._receive_messages, args=[], daemon=True)
         self.receive_thread.start()

@@ -83,3 +83,21 @@ client to client private messages being sent during the game. Suggested format i
 ```
 
 Other fields might be added in the future.
+
+### PLST
+
+Message sent when client sents JOIN message, or when RECN is sent by broker. Format is:
+
+```json
+{
+  "players": [
+    {
+      "player_id": player_id,
+      "alias": alias
+    },
+    ...
+  ]
+}
+```
+
+Other fields might be added in the future.

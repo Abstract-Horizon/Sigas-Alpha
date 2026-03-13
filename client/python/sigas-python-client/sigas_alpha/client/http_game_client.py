@@ -8,7 +8,8 @@ from typing import Any, Generator, Optional, Callable
 import requests
 
 from sigas_alpha.game.game import Game, GameOptions
-from sigas_alpha.message import create_message, MessageExtension, HeloMessage, HeartBeatMessage
+from sigas_alpha.message import create_message, MessageExtension, HeloMessage, HeartBeatMessage, ClientReconnectedMessage, JoinedMessage
+from sigas_alpha.message.system_messages import PlayerListMessage
 from sigas_alpha.player import Player
 
 logger = logging.getLogger(__name__)
@@ -143,8 +144,7 @@ class StreamPair:
                                 pass
 
                         else:
-                            self.http_game_client._receive_queue.put(message)
-                            self.http_game_client.broadcast_message_received(message)
+                            self.http_game_client._receive_message(message)
 
                 except Exception as e:
                     if self._do_run:
@@ -164,11 +164,26 @@ class StreamPair:
             self._receiving_thread_running = False
 
 
+class Callbacks:
+    def __init__(
+            self,
+            on_message_received: Optional[Callable[['HTTPGameClient', MessageExtension], None]] = None,
+            on_missed_heartbeat: Optional[Callable[['HTTPGameClient'], None]] = None,
+            on_request_for_complete_game_state: Optional[Callable[['HTTPGameClient', str], None]] = None,
+            on_player_joined: Optional[Callable[['HTTPGameClient', Player], None]] = None,
+    ) -> None:
+        self.on_message_received = on_message_received
+        self.on_missed_heartbeat = on_missed_heartbeat
+        self.on_request_for_complete_game_state = on_request_for_complete_game_state
+        self.on_player_joined = on_player_joined
+
+
 class HTTPGameClient:
     def __init__(self,
                  api_url: str,
                  api_token: str,
-                 heartbeat_period: float = 2.0
+                 heartbeat_period: float = 2.0,
+                 callbacks: Callbacks = Callbacks()
                  ) -> None:
         self.api_url = api_url
         self.api_token = api_token
@@ -188,32 +203,11 @@ class HTTPGameClient:
         self.last_heartbeat_time = 0
         self.heartbeat_received = False
 
-        self._on_message_received: Optional[Callable[['HTTPGameClient', MessageExtension], None]] = None
-        self._on_missed_heartbeat: Optional[Callable[['HTTPGameClient'], None]] = None
-
-    def broadcast_message_received(self, msg: MessageExtension) -> None:
-        if self._on_message_received is not None:
-            self._on_message_received(self, msg)
+        self.callbacks = callbacks
 
     def broadcast_missed_heartbeat(self) -> None:
-        if self._on_missed_heartbeat is not None:
-            self._on_missed_heartbeat(self)
-
-    @property
-    def on_message_received(self) -> Optional[Callable[['HTTPGameClient', MessageExtension], None]]:
-        return self._on_message_received
-
-    @on_message_received.setter
-    def on_message_received(self, callback: Optional[Callable[['HTTPGameClient', MessageExtension], None]]) -> None:
-        self._on_message_received = callback
-
-    @property
-    def on_missed_heartbeat(self) -> Optional[Callable[['HTTPGameClient', MessageExtension], None]]:
-        return self._on_missed_heartbeat
-
-    @on_missed_heartbeat.setter
-    def on_missed_heartbeat(self, callback: Optional[Callable[['HTTPGameClient', MessageExtension], None]]) -> None:
-        self._on_missed_heartbeat = callback
+        if self.callbacks.on_missed_heartbeat is not None:
+            self.callbacks.on_missed_heartbeat(self)
 
     def create_game(self, game_name: str, alias: Optional[str] = None, game_options: GameOptions = GameOptions()) -> tuple[Game, Player]:
         request_body = {
@@ -238,9 +232,10 @@ class HTTPGameClient:
         self.stream_token = response_player_body["token"]
         self.player = Player(player_id, alias)
 
-        self.game = Game(game_id, game_name, self.stream_url)
+        self.game = Game(game_id, game_name, self.stream_url, master=True)
         self.game.master_player = self.player
         self.game_master = True
+        self.game.players[self.player.player_id] = self.player
 
         return self.game, self.player
 
@@ -265,6 +260,7 @@ class HTTPGameClient:
         self.player = Player(player_body["player_id"], player_body["alias"])
 
         self.game = Game(game_id, game_name, self.stream_url)
+        self.game.players[self.player.player_id] = self.player
 
         self._send_queue.put(HeloMessage())
         return self.game, self.player
@@ -309,3 +305,22 @@ class HTTPGameClient:
             return self._receive_queue.get(block, timeout)
         except Empty:
             return None
+
+    def _receive_message(self, message: MessageExtension) -> None:
+        if isinstance(message, JoinedMessage):
+            player = Player(message.client_id, message.json_body["alias"])
+            self.game.players[message.client_id] = player
+            if self.callbacks.on_player_joined is not None:
+                self.callbacks.on_player_joined(self, player)
+
+        if self.game.is_master() and (isinstance(message, JoinedMessage) or isinstance(message, ClientReconnectedMessage)):
+            response_json = {"players": [{"player_id": p.player_id, "alias": p.alias} for p in self.game.players.values()]}
+            player_list_message = PlayerListMessage(response_json, client_id=message.client_id)
+            self.send_message(player_list_message)
+
+        if isinstance(message, PlayerListMessage):
+            message.apply_to_game(self.game)
+
+        self._receive_queue.put(message)
+        if self.callbacks.on_message_received is not None:
+            self.callbacks.on_message_received(self, message)

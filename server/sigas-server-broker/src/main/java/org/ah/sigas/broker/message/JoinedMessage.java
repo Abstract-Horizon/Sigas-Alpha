@@ -1,6 +1,6 @@
 package org.ah.sigas.broker.message;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 import org.ah.sigas.json.JSON;
 
@@ -12,7 +12,7 @@ public class JoinedMessage extends Message {
 
     public JoinedMessage(String type, String flags, String clientId, String alias) {
         super(type, flags, clientId, JSON.asJSON(
-                new HashMap<String, Object>() {{
+                new LinkedHashMap<String, Object>() {{
                     put("client_id", clientId);
                     put("alias", alias);
                 }}

@@ -109,7 +109,7 @@ public class TestStreamingMessages {
                     out.flush();
 
 
-                    byte[] joinJson = "{\"alias\":\"player1\",\"client_id\":\"02\"}".getBytes();
+                    byte[] joinJson = "{\"client_id\":\"02\",\"alias\":\"player1\"}".getBytes();
                     ByteBuffer joinBuffer = ByteBuffer.allocate(12 + joinJson.length);
                     joinBuffer.put("JOIN  01".getBytes());
                     joinBuffer.putInt(joinJson.length);

@@ -4,7 +4,9 @@ from typing import Optional
 import time
 from abc import ABC
 
+from sigas_alpha.game.game import Game
 from sigas_alpha.message.messages import JsonMessage, ZeroLenMessage, Message, register_message_type, FixedTypeMessageExtension
+from sigas_alpha.player import Player
 
 
 class HeloMessage(ZeroLenMessage):
@@ -60,6 +62,30 @@ class PrivateMsgMessage(JsonMessage):
     def create_typ() -> str: return "PMSG"
 
 
+class PlayerListMessage(JsonMessage):
+    @staticmethod
+    def create_typ() -> str: return "PLST"
+
+    def get_players(self) -> list[Player]:
+        json_msg = self.json_body
+        result = []
+        if "players" in json_msg:
+            for player_dict in json_msg["players"]:
+                player_id = player_dict["player_id"] if "player_id" in player_dict else None
+                alias = player_dict["alias"] if "alias" in player_dict else None
+                if player_id is not None and alias is not None:
+                    result.append(Player(player_id, alias))
+        return result
+
+    def apply_to_game(self, game: Game) -> None:
+        players = self.get_players()
+        for player in players:
+            if player.player_id not in game.players:
+                game.players[player.player_id] = player
+            else:
+                game.players[player.player_id].alias = player.alias
+
+
 class PingPongMessage(Message, ABC):
 
     @classmethod
@@ -72,14 +98,14 @@ class PingPongMessage(Message, ABC):
             real_cls = PingMessage
         else:
             real_cls = PongMessage
-        return real_cls(client_id, flags, struct.unpack(">q", body)[0] / 1000.0)
+        return real_cls(client_id, flags, struct.unpack(">Q", body)[0] / 1000.0)
 
     def __init__(self, typ: str, client_id: str = "--", flags: str = "  ", time: Optional[float] = None):
         super().__init__(typ, client_id, flags)
         self.time = time
 
     def body(self) -> bytes:
-        return struct.pack(">q", int(self.time * 1000))
+        return struct.pack(">Q", int(self.time * 1000))
 
     def __repr__(self) -> str:
         return f"{self.typ}[{self.flags}{self.client_id}]({self.time})"
@@ -108,7 +134,8 @@ _register_classes(
     ClientReconnectedMessage,
     GameStartedMessage,
     GameEndMessage,
-    PrivateMsgMessage
+    PrivateMsgMessage,
+    PlayerListMessage
 )
 
 register_message_type("HRTB", HeartBeatMessage)

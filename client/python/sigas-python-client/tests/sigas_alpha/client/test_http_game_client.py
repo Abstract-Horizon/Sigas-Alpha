@@ -6,6 +6,7 @@ import time
 from hamcrest import assert_that, contains_exactly
 
 from sigas_alpha.message import PingMessage, PongMessage, HeloMessage, JoinedMessage
+from sigas_alpha.message.system_messages import PlayerListMessage
 
 from tests.sigas_alpha.client.server_setup import TestServerSetup
 
@@ -44,19 +45,19 @@ class TestHTTPGameServer(unittest.TestCase):
 
         print("Waiting up to 10s...")
         started_time = time.time()
-        while time.time() - started_time < 10 and (len(self.master_client.messages) < 3 or len(self.player1_client.messages) < 2):
+        while time.time() - started_time < 10 and (len(self.master_client.messages) < 3 or len(self.player1_client.messages) < 3):
             time.sleep(0.1)
-
-        # lasted = time.time() - started_time
-        # assert_that(lasted, less_than(10.0), f"Timed out - wait lasted longer than 10s; {lasted}")
 
         ping_message.client_id = "03"
         expected_master_messages = [
-            JoinedMessage({"client_id": "02", "alias": "player1"}, "02"), HeloMessage("02"),
-            JoinedMessage({"client_id": "03", "alias": "player2"}, "03"), HeloMessage("03"),
+            JoinedMessage({"client_id": "02", "alias": "player1_alias"}, "02"), HeloMessage("02"),
+            JoinedMessage({"client_id": "03", "alias": "player2_alias"}, "03"), HeloMessage("03"),
             ping_message
         ]
-        expected_client1_messages = [JoinedMessage({"client_id": "03", "alias": "player2"}, "03"), pong_message]
+        expected_client1_messages = [
+            PlayerListMessage({"players": [{"player_id": "01", "alias": "main_alias"}, {"player_id": "02", "alias": "player1_alias"}]}, "02"),
+            JoinedMessage({"client_id": "03", "alias": "player2_alias"}, "03"), pong_message
+        ]
 
         assert_that(cast(Sequence, self.master_client.messages), contains_exactly(*expected_master_messages), f"Got {self.master_client.messages}")
         assert_that(cast(Sequence, self.player1_client.messages), contains_exactly(*expected_client1_messages), f"Got {self.player1_client.messages}")

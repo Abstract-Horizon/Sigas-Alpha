@@ -13,7 +13,7 @@ requests.put('http://localhost:8082/game/333/start', data='')
 
 
 def create_message(typ: str, body: bytes) -> bytes:
-    return typ.encode("ascii") + struct.pack(">i", len(body)) + body
+    return typ.encode("ASCII") + struct.pack(">I", len(body)) + body
 
 
 def receive_master_input(master_id: str):
@@ -21,7 +21,7 @@ def receive_master_input(master_id: str):
 
     for chunk in (r.raw.read_chunked()):
         typ = chunk[0:4].decode("ASCII")
-        l = struct.unpack(">i", chunk[4:8])[0]
+        l = struct.unpack(">I", chunk[4:8])[0]
         body = chunk[8:8 + l]
         client_id = body[:2].decode('ascii')
         body = body[2:]
@@ -33,7 +33,7 @@ def receive_client_input(client_id: str):
 
     for chunk in (r.raw.read_chunked()):
         typ = chunk[0:4].decode("ASCII")
-        len = struct.unpack(">i", chunk[4:8])[0]
+        len = struct.unpack(">I", chunk[4:8])[0]
         body = chunk[8:8 + len]
         _received_client_id = str(body[:2])
         body = body[2:]
@@ -64,7 +64,7 @@ now = int(time.time() * 1000)
 print("Sending messages as client 1235")
 requests.post('http://localhost:8081/game/333/1235', data=message_generator([
     create_message("HELO", b"\x00\x00"),
-    create_message("PING", b"\x00\x00" + struct.pack(">q", now))
+    create_message("PING", b"\x00\x00" + struct.pack(">Q", now))
 ]))
 print("Sent messages as client 1235")
 
@@ -73,7 +73,7 @@ time.sleep(1)
 now = int(time.time() * 1000)
 print("Sending messages as master 1234")
 requests.post('http://localhost:8081/game/333/1234', data=message_generator([
-    b"PONG" + struct.pack(">i", 10) + b"00" + struct.pack(">q", now)
+    b"PONG" + struct.pack(">I", 10) + b"00" + struct.pack(">Q", now)
 ]))
 print("Sent messages as master 1234")
 

@@ -13,7 +13,7 @@ class Message(ABC):
 
     @classmethod
     def from_body(cls, typ: str, client_id: str, flags: str, body: bytes) -> 'Message':
-        return cls()
+        return cls(typ, client_id, flags)
 
     def body(self) -> bytes:
         return Message.EMPTY_BODY
@@ -78,7 +78,14 @@ class JsonMessage(FixedTypeMessage, ABC):
 
     def __init__(self, json_body: dict[str, Any], client_id: str = "--", flags: str = "  "):
         super().__init__(self.create_typ(), client_id, flags)
-        self.json_body = json_body
+        self._json_body = json_body
+
+    @property
+    def json_body(self) -> dict[str, Any]:
+        return self._json_body
+
+    def body(self) -> bytes:
+        return json.dumps(self._json_body).encode("ASCII")
 
 
 MessageExtension = TypeVar("MessageExtension", bound=Message)

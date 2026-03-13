@@ -40,10 +40,14 @@ class GameOptions:
 
 
 class Game:
-    def __init__(self, game_id: str, game_name: str, url: str, game_options: GameOptions = GameOptions()) -> None:
+    def __init__(self, game_id: str, game_name: str, url: str, game_options: GameOptions = GameOptions(), master: bool = False) -> None:
         self.game_id = game_id
         self.game_name = game_name
         self.players: dict[str, Player] = {}
         self.url = url
         self.master_player: Optional[Player] = None
         self.game_options = game_options
+        self._master = master
+
+    def is_master(self) -> bool:
+        return self._master

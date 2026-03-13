@@ -127,17 +127,20 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
                 ms = 8;
             } else if (ms == 8) {
                 ptr = 0;
-                msgLen = b;
+                msgLen = b < 0 ? (256 + b) : b;
                 ms = 9;
             } else if (ms == 9) {
-                msgLen = msgLen * 8 + b;
+                msgLen = msgLen * 8 + b < 0 ? (256 + b) : b;
                 ms = 10;
             } else if (ms == 10) {
-                msgLen = msgLen * 8 + b;
+                msgLen = msgLen * 8 + b < 0 ? (256 + b) : b;
                 ms = 11;
             } else if (ms == 11) {
-                msgLen = msgLen * 8 + b;
+                msgLen = msgLen * 8 + b < 0 ? (256 + b) : b;
 
+                if (msgLen < 0) {
+                    throw new NegativeArraySizeException("Got " + msgLen + " for '" + new String(messageType) + "'");
+                }
                 messageBytes = new byte[msgLen];
 
                 if (readMessage()) {

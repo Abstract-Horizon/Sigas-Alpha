@@ -25,14 +25,14 @@ class PingPongMessage(Message, ABC):
             real_cls = PingMessage
         else:
             real_cls = PongMessage
-        return real_cls(client_id, flags, struct.unpack(">q", body)[0] / 1000.0)
+        return real_cls(client_id, flags, struct.unpack(">Q", body)[0] / 1000.0)
 
     def __init__(self, typ: str, client_id: str = "--", flags: str = "  ", time: float = time.time()):
         super().__init__(typ, client_id, flags)
         self.time = time
 
     def body(self) -> bytes:
-        return struct.pack(">q", int(self.time * 1000))
+        return struct.pack(">Q", int(self.time * 1000))
 
     def __repr__(self) -> str:
         return f"{self.typ}[{self.flags}{self.client_id}]({self.time})"
