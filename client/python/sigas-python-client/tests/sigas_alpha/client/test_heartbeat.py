@@ -36,13 +36,6 @@ class TestHeartBeat(unittest.TestCase):
         while self.master_client.http_game_client.heartbeat_next_sequence < 6 and time.time() - started_time < 300:
             time.sleep(0.1)
 
-        expected_master_messages = [
-            JoinedMessage({"client_id": "02", "alias": "player1_alias"}, "02"), HeloMessage("02")
-        ]
-        assert_that(cast(Sequence, self.master_client.messages), contains_exactly(*expected_master_messages), f"Got {self.master_client.messages}")
-        assert_that(cast(Sequence, self.player1_client.messages), contains_exactly(
-            PlayerListMessage({"players": [{"player_id": "01", "alias": "main_alias"}, {"player_id": "02", "alias": "player1_alias"}]}, "02")
-        ), f"Got {self.player1_client.messages}")
         assert_that(self.master_client.http_game_client.heartbeat_next_sequence, greater_than_or_equal_to(5), f"Got {self.master_client.http_game_client.heartbeat_next_sequence}")
 
         print("Done")

@@ -35,7 +35,10 @@ class GameActions(WebActions):
         if alias is None:
             alias = f"anonymous_{self.user_manager.next_anonymous_number()}"
 
-        master_player = Player(token.token, alias)
+        # TODO this should be newly created token for the game!
+        game_access_token = token.token
+
+        master_player = Player(game_access_token, alias)
 
         game_name = body["name"]
         game = self.game_manager.create_game(game_name, master_player)
@@ -47,7 +50,7 @@ class GameActions(WebActions):
             "master_player": {
                 "player_id": master_player.player_id,
                 "alias": master_player.alias,
-                "token": token.token
+                "token": master_player.player_token
             }
         })
 
@@ -67,7 +70,10 @@ class GameActions(WebActions):
         if alias is None:
             alias = f"anonymous_{self.user_manager.next_anonymous_number()}"
 
-        player = Player(token.token, alias)
+        # TODO this should be newly created token for the game!
+        game_access_token = token.token
+
+        player = Player(game_access_token, alias)
 
         if game_id not in self.game_manager.games:
             return self.error(404, f"Cannot find game with game id '{game_id}'")
@@ -89,7 +95,7 @@ class GameActions(WebActions):
             "player": {
                 "player_id": player.player_id,
                 "alias": player.alias,
-                "token": token.token
+                "token": player.player_token
             }
         })
 

@@ -4,6 +4,8 @@ import logging
 from sigas_server_hub.game.kubernetes_game_manager import KubernetesGameManager
 from sigas_server_hub.game.test_game_manager import TestGameManager
 from sigas_server_hub.sigas_hub import SigasHub
+from sigas_server_hub.tokens import TokenManager
+from sigas_server_hub.users import UserManager
 
 parser = argparse.ArgumentParser(description="Sigas-Alpha hub")
 parser.add_argument("--external-port", dest="external_port", default=None, required=True, help="External port to listen on")
@@ -58,11 +60,13 @@ users_file = args.users_file
 
 expunge_interval = args.expunge_interval
 
+token_manager = TokenManager(token_file, expunge_trigger_ratio=args.expunge_trigger_ratio)
+user_manager = UserManager(users_file, expunge_trigger_ratio=args.expunge_trigger_ratio)
+
 sigas_hub = SigasHub(
     external_port, internal_port,
-    token_file=token_file,
-    users_file=users_file,
-    expunge_trigger_ratio=args.expunge_trigger_ratio,
+    token_manager=token_manager,
+    user_manager=user_manager,
     expunge_interval=expunge_interval,
     game_manager_class=TestGameManager if args.test_setup else KubernetesGameManager)
 

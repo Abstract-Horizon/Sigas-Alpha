@@ -14,6 +14,8 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
+import org.ah.sigas.broker.game.Client;
+import org.ah.sigas.broker.game.Client.Direction;
 import org.ah.sigas.broker.game.Game;
 
 public class Broker {
@@ -21,6 +23,7 @@ public class Broker {
     public static boolean INFO = true;
     public static boolean DEBUG = true;
     public static boolean TRACE = true;
+    public static boolean HEADERS = false;
 
     private int serverPort;
     private int internalPort;
@@ -34,6 +37,9 @@ public class Broker {
 
     private boolean doStop = false;
 
+    private SelectionKey serverKey;
+    private SelectionKey internalKey;
+
     public Broker(int serverPort, int internalPort, URI hubURI) {
         this.serverPort = serverPort;
         this.internalPort = internalPort;
@@ -45,12 +51,14 @@ public class Broker {
         serverChannel = ServerSocketChannel.open();
         serverChannel.configureBlocking(false);
         serverChannel.socket().bind(new InetSocketAddress((InetAddress)null, serverPort));
-        serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+        serverKey = serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+        serverKey.attach("Server Key");
 
         internalChannel = ServerSocketChannel.open();
         internalChannel.configureBlocking(false);
         internalChannel.socket().bind(new InetSocketAddress((InetAddress)null, internalPort));
-        internalChannel.register(selector, SelectionKey.OP_ACCEPT);
+        internalKey = internalChannel.register(selector, SelectionKey.OP_ACCEPT);
+        internalKey.attach("Internal Key");
     }
 
     public Map<String, Game> getGames() { return games; }
@@ -73,27 +81,32 @@ public class Broker {
         while (!doStop) {
             try {
 
-                selector.select(200);
+                selector.select(500);
                 Set<SelectionKey> keys = selector.selectedKeys();
 
-                Iterator<SelectionKey> keyIterator = keys.iterator();
-                while (keyIterator.hasNext()) {
-                    SelectionKey key = keyIterator.next();
-                    keyIterator.remove();
-                    try {
-                        if (key.isValid()) {
-                            if (key.isAcceptable()) {
-                                accept(key);
-                            } else if (key.isReadable()) {
-                                read(key);
-                            } else if (key.isWritable()) {
-                                write(key);
+                if (!keys.isEmpty()) {
+                    Iterator<SelectionKey> keyIterator = keys.iterator();
+                    while (keyIterator.hasNext()) {
+                        SelectionKey key = keyIterator.next();
+                        keyIterator.remove();
+                        try {
+                            if (key.isValid()) {
+                                if (key.isAcceptable()) {
+                                    accept(key);
+                                } else if (key.isConnectable()) {
+                                    System.out.println("Key " + key + " got connectable selection");
+
+                                } else if (key.isReadable()) {
+                                    read(key);
+                                } else if (key.isWritable()) {
+                                    write(key);
+                                }
                             }
+                        } catch (Throwable e) {
+                            System.err.println("*** Closing channel: error while handling selection key. Channel: " + key.channel() + "; " + e.getClass().getCanonicalName() + "(" + (e.getMessage() != null ? e.getMessage() : "") + ")");
+                            e.printStackTrace();
+                            closeChannel(key);
                         }
-                    } catch (Throwable e) {
-                        System.err.println("*** Closing channel: error while handling selection key. Channel: " + key.channel() + "; " + e.getClass().getCanonicalName() + "(" + (e.getMessage() != null ? e.getMessage() : "") + ")");
-                        e.printStackTrace();
-                        closeChannel(key);
                     }
                 }
             } catch (Throwable e) {
@@ -125,7 +138,7 @@ public class Broker {
             if (DEBUG) { System.out.println("*** Accepting channel " + logChannel(clientChannel)); }
 
             key.attach(new HTTPServerRequestHandler(this));
-        } else {
+        } else if (selectedKey.channel() == internalChannel) {
             SocketChannel clientChannel = internalChannel.accept();
             if (clientChannel == null) {
                 System.err.println("Internal channel cannot be accepted");
@@ -137,6 +150,8 @@ public class Broker {
             if (DEBUG) { System.out.println("*** Accepting channel " + logChannel(clientChannel)); }
 
             key.attach(new HTTPInternalRequestHandler(this));
+        } else {
+            System.err.println("Selected key " + selectedKey + " is not known");
         }
 
     }
@@ -165,7 +180,26 @@ public class Broker {
     public void closeChannel(SelectionKey key) throws IOException {
         SocketChannel channel = (SocketChannel) key.channel();
         key.cancel();
-        if (DEBUG) { System.out.println("*** Closing connection for channel: " + logChannel(channel)); }
+
+        String prefix = "***";
+        Client client = null;
+        Direction direction = null;
+
+        Object attachment = key.attachment();
+        if (attachment instanceof ClientInboundHandlerImpl) {
+            ClientInboundHandlerImpl handler = (ClientInboundHandlerImpl)attachment;
+            client = handler.getClient();
+            direction = Direction.IN;
+        } else if (attachment instanceof ClientOutboundHandlerImpl) {
+            ClientOutboundHandlerImpl handler = (ClientOutboundHandlerImpl)attachment;
+            client = handler.getClient();
+            direction = Direction.OUT;
+        }
+        if (client != null && direction != null) {
+            prefix = client.getGame().getGameId() + direction.asStirng() + client.getClientId();
+        }
+
+        if (DEBUG) { System.out.println(prefix + " Closing connection for channel: " + logChannel(channel)); }
 
         Handler handler = (Handler)key.attachment();
         if (handler != null) {

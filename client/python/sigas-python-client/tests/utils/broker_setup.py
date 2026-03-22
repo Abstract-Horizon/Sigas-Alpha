@@ -1,3 +1,4 @@
+import logging
 import socket
 import subprocess
 import time
@@ -8,6 +9,8 @@ from threading import Thread
 from typing import Optional, Any, Generator
 
 from tests.test_utils import find_free_port
+
+logger = logging.getLogger(__name__)
 
 
 class BrokerSetup:
@@ -54,8 +57,10 @@ class BrokerSetup:
             for out_line, err_line in self._read_popen_pipes(self.broker_process):
                 if err_line is not None and err_line != "":
                     print(f"Broker E: {err_line}", end='' if err_line.endswith("\n") else '')
+                    # logger.warning(f"Broker E: {err_line}", end='' if err_line.endswith("\n") else '')
                 if out_line is not None and out_line != "":
                     print(f"Broker S: {out_line}", end='' if out_line.endswith("\n") else '')
+                    # logger.warning(f"Broker S: {out_line}", end='' if out_line.endswith("\n") else '')
                 if out_line == "" and err_line == "":
                     time.sleep(0.25)
             return_code = self.broker_process.poll()

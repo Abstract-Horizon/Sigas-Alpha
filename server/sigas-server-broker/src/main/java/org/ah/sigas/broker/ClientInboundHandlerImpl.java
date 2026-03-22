@@ -10,6 +10,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.WritableByteChannel;
 
 import org.ah.sigas.broker.game.Client;
+import org.ah.sigas.broker.game.Client.Direction;
 
 public class ClientInboundHandlerImpl extends BaseClientHandler {
 
@@ -171,16 +172,17 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
                 } else if (b == 13) {
                     cs = 1;
                 } else  {
-                    if (Broker.DEBUG) { log("Wrong input in Chunked-Encoding size, expected '0-9A-F' or CR; got '" + Integer.toString(b) + "'", true); }
+                    if (Broker.DEBUG) { log(Direction.IN, "Wrong input in Chunked-Encoding size, expected '0-9A-F' or CR; got '" + Integer.toString(b) + "'", true); }
                     error = true;
                 }
             } else if (cs == 1) {
                 if (b == 10) {
-                    if (Broker.TRACE) { log("Got chunk of " + chunkLen + " bytes"); }
                     if (chunkLen == 0) {
+                        if (Broker.TRACE) { log(Direction.IN, "Got last chunk"); }
                         error = true;
                         gracefulEnd = true;
                     } else {
+                        if (Broker.TRACE) { log(Direction.IN, "Got chunk of " + chunkLen + " bytes"); }
                         parseMessage();
                         if (chunkLen == 0) {
                             cs = 3;
@@ -189,7 +191,7 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
                         }
                     }
                 } else {
-                    if (Broker.DEBUG) { log("Wrong input after CR in Chunked-Encoding size; expected LF and got '" + Integer.toString(b) + "'", true); }
+                    if (Broker.DEBUG) { log(Direction.IN, "Wrong input after CR in Chunked-Encoding size; expected LF and got '" + Integer.toString(b) + "'", true); }
                     error = true;
                 }
             } else if (cs == 2) {
@@ -202,15 +204,15 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
                 if (b == 13) {
                     cs = 4;
                 } else {
-                    if (Broker.DEBUG) { log("Expected chunk end (LF) but got '" + Integer.toString(b) + "'", true); }
+                    if (Broker.DEBUG) { log(Direction.IN, "Expected chunk end (LF) but got '" + Integer.toString(b) + "'", true); }
                     error = true;
                 }
             } else if (cs == 4) {
                 if (b == 10) {
-                    if (Broker.TRACE) { log("Completed chunk"); }
+                    if (Broker.TRACE) { log(Direction.IN, "Completed chunk"); }
                     cs = 0;
                 } else {
-                    if (Broker.DEBUG) { log("Expected chunk (CR) end but got '" + Integer.toString(b) + "'", true); }
+                    if (Broker.DEBUG) { log(Direction.IN, "Expected chunk (CR) end but got '" + Integer.toString(b) + "'", true); }
                     error = true;
                 }
             }
@@ -240,6 +242,7 @@ public class ClientInboundHandlerImpl extends BaseClientHandler {
                 } else {
                     broker.closeChannel(key);
                 }
+                client.setHasInboundChannel(false);
                 return;
             }
 

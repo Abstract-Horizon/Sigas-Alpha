@@ -45,6 +45,13 @@ class StreamPair:
             now = time.time()
             while time.time() - now < wait and (self._sending_thread_running or self._receiving_thread_running or self._heartbeat_thread_running):
                 time.sleep(0.1)
+            if self._sending_thread_running:
+                print(f"Stopped connection but sending thread is still running")
+            if self._receiving_thread_running:
+                print(f"Stopped connection but receiving thread is still running")
+            if self._heartbeat_thread_running:
+                print(f"Stopped connection but heartbeat thread is still running")
+
         else:
             self._sending_thread.join(0.001)
             self._heartbeat_thread.join(0.001)
@@ -87,7 +94,7 @@ class StreamPair:
                         time.sleep(self._outbound_graceful_backoff_period)
 
         finally:
-            logger.warning(f"{token}: Finished outbound streaming loop")
+            logger.warning(f"{token}:{self.http_game_client.player.player_id}: Finished outbound streaming loop")
             self._sending_thread_running = False
 
     def _message_generator(self) -> Generator[bytes, Any, None]:
@@ -100,6 +107,12 @@ class StreamPair:
                     yield complete_message
             except Empty:
                 pass
+        if not self._do_run:
+            # Send last heartbeat message so we receive something from the other end and close inbound queue
+            message = HeartBeatMessage(self.http_game_client.heartbeat_next_sequence)
+            body = message.body()
+            complete_message = message.typ.encode("ASCII") + message.flags.encode("ASCII") + message.client_id.encode("ASCII") + struct.pack(">I", len(body)) + body
+            yield complete_message
 
     def _heartbeat_generator(self) -> None:
         self._heartbeat_thread_running = True
@@ -146,6 +159,11 @@ class StreamPair:
                         else:
                             self.http_game_client._receive_message(message)
 
+                        if not self._do_run:
+                            r.close()
+                            logger.warning(f"{token}:{self.http_game_client.player.player_id}: Closed inbound connection")
+                            break
+
                 except Exception as e:
                     if self._do_run:
                         logger.warning(f"Got exception in inbound loop; {e}", exc_info=True)
@@ -159,8 +177,10 @@ class StreamPair:
 
                         logger.warning(f"Backing off inbound request for {self._inbound_graceful_backoff_period}")
                         time.sleep(self._inbound_graceful_backoff_period)
+                    else:
+                        logger.warning(f"Got exception in inbound loop; {e}", exc_info=True)
         finally:
-            logger.warning(f"{token}: Finished inbound streaming loop")
+            logger.warning(f"{token}:{self.http_game_client.player.player_id}: Finished inbound streaming loop")
             self._receiving_thread_running = False
 
 
@@ -216,6 +236,8 @@ class HTTPGameClient:
             "options": game_options.as_json()
         }
 
+        self.heartbeat_period = game_options.heartbeat_period
+
         response = requests.post(f"{self.api_url}/game", headers={"Authorization": f"Token {self.api_token}"}, json=request_body)
 
         response_body = response.json()
@@ -232,7 +254,7 @@ class HTTPGameClient:
         self.stream_token = response_player_body["token"]
         self.player = Player(player_id, alias)
 
-        self.game = Game(game_id, game_name, self.stream_url, master=True)
+        self.game = Game(game_id, game_name, self.stream_url, master=True, game_options=game_options)
         self.game.master_player = self.player
         self.game_master = True
         self.game.players[self.player.player_id] = self.player
@@ -309,6 +331,7 @@ class HTTPGameClient:
     def _receive_message(self, message: MessageExtension) -> None:
         if isinstance(message, JoinedMessage):
             player = Player(message.client_id, message.json_body["alias"])
+            logger.warning(f"Client: {self.game.game_id}:{self.player.player_id}: received join for {player.player_id} ")
             self.game.players[message.client_id] = player
             if self.callbacks.on_player_joined is not None:
                 self.callbacks.on_player_joined(self, player)

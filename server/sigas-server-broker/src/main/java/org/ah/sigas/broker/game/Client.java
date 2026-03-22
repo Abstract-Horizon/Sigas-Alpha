@@ -6,10 +6,24 @@ import java.util.LinkedList;
 import org.ah.sigas.broker.Broker;
 import org.ah.sigas.broker.ClientHandler;
 import org.ah.sigas.broker.ClientOutboundHandlerImpl;
+import org.ah.sigas.broker.message.ClientReconnectedMessage;
 import org.ah.sigas.broker.message.HeartBeatMessage;
 import org.ah.sigas.broker.message.Message;
 
 public class Client {
+
+    public static enum Direction {
+        IN(">"),
+        OUT("<");
+
+        private String s;
+
+        Direction(String s) {
+            this.s = s;
+        }
+
+        public String asStirng() { return s; }
+    }
 
     private Game game;
     private boolean master;
@@ -20,16 +34,21 @@ public class Client {
     private long lastActivity;
     private ClientHandler clientInboundHandler;
     private ClientHandler clientOutboundHandler;
+    private boolean inboundChannelPresent;
+    private boolean outboundChannelPresent;
+    private boolean messagesRemoved;
+    private int maxQueueSize;
 
     // private LinkedList <Message> receivedMessages = new LinkedList<>();
     private LinkedList <Message> messagesToSend = new LinkedList<>();
 
-    public Client(Game game, String token, String clientId, String alias, boolean master) {
+    public Client(Game game, String token, String clientId, String alias, boolean master, int maxQueueSize) {
         this.game = game;
         this.token = token;
         this.clientId = clientId;
         this.alias = alias;
         this.master = master;
+        this.maxQueueSize = maxQueueSize;
         lastActivity = createdTimestamp;
     }
 
@@ -47,12 +66,18 @@ public class Client {
     public ClientHandler getOutboundHandler() { return clientOutboundHandler; }
     public void setOutboundHandler(ClientHandler clientOutboundHandler) { this.clientOutboundHandler = clientOutboundHandler; }
 
+    public boolean hasInboutChannel() { return inboundChannelPresent; }
+    public void setHasInboundChannel(boolean hasInboutChannel) { inboundChannelPresent = hasInboutChannel; }
+
+    public boolean hasOutboutChannel() { return outboundChannelPresent; }
+    public void setHasOutboundChannel(boolean hasOutboutChannel) { outboundChannelPresent = hasOutboutChannel; }
+
     public void touch() { lastActivity = System.currentTimeMillis(); }
 
     public LinkedList<Message> getMessagesToSend() { return messagesToSend; }
 
     public void receivedMessage(String type, String header, byte[] body) throws IOException {
-        if (Broker.TRACE) { log("Received message '" + type + "'(" + header + "): \n" + new String(body)); }
+        if (Broker.TRACE) { log(Direction.IN, "Received message '" + type + "'(" + header + "): \n" + new String(body)); }
 
         if (!master || "HRTB".equals(type)) {
             // Overwrite client ID
@@ -68,20 +93,41 @@ public class Client {
     }
 
     public void sendMessage(Message message) throws IOException {
-        messagesToSend.add(message);
-        if (clientOutboundHandler != null) {
-            ((ClientOutboundHandlerImpl)clientOutboundHandler).clientHasMessages();
-        // } else {
-        //     log("Got message " + message.getType() + " but no clientOutboundHandler");
+        if (!messagesRemoved) {
+            messagesToSend.add(message);
+            if (clientOutboundHandler != null && outboundChannelPresent) {
+                ((ClientOutboundHandlerImpl)clientOutboundHandler).clientHasMessages();
+            // } else {
+            //     log("Got message " + message.getType() + " but no clientOutboundHandler");
+            } else {
+                if (messagesToSend.size() > maxQueueSize) {
+                    messagesToSend.clear();
+                    messagesRemoved = true;
+                }
+            }
         }
     }
 
-    public void log(String msg) {
-        log(msg, false);
+    public void newOutboundConnection() throws IOException {
+        if (!messagesToSend.isEmpty()) {
+            String[] messageTypes = messagesToSend.stream().map(m -> m.getType()).toArray(size -> new String[size]);
+            if (Broker.TRACE) { log(Direction.IN, "   new connection to existing client - have messages: " + String.join(", ", messageTypes)); }
+            ((ClientOutboundHandlerImpl)clientOutboundHandler).clientHasMessages();
+        } else if (messagesRemoved) {
+            messagesRemoved = false;
+            sendMessage(new ClientReconnectedMessage(clientId));
+            if (Broker.TRACE) { log(Direction.IN, "   new connection to existing client - previously removed messages"); }
+        } else {
+            if (Broker.TRACE) { log(Direction.IN, "   new connection to existing client - no messages and no messages were removed"); }
+        }
     }
 
-    public void log(String msg, boolean error) {
-        String prefix = game.getGameId() + ":" + clientId + " ";
+    public void log(Direction direction, String msg) {
+        log(direction, msg, false);
+    }
+
+    public void log(Direction direction, String msg, boolean error) {
+        String prefix = game.getGameId() + direction.asStirng() + clientId + " ";
 
         if (error) {
             System.err.println(prefix + msg);

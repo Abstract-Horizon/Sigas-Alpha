@@ -24,9 +24,8 @@ class SigasHub:
                  # app_internal: Flask,
                  external_port: int,
                  internal_port: int,
-                 token_file: str,
-                 users_file: str,
-                 expunge_trigger_ratio: float,
+                 token_manager: TokenManager,
+                 user_manager: UserManager,
                  expunge_interval: float,
                  game_manager_class: type) -> None:
 
@@ -36,11 +35,10 @@ class SigasHub:
         self.external_port = external_port
         self.internal_port = internal_port
 
-        self.expunge_trigger_ratio = expunge_trigger_ratio
         self.expunge_interval = expunge_interval
 
-        self.token_manager = TokenManager(token_file, expunge_trigger_ratio=expunge_trigger_ratio)
-        self.user_manager = UserManager(users_file, expunge_trigger_ratio=expunge_trigger_ratio)
+        self.token_manager = token_manager
+        self.user_manager = user_manager
 
         self.user_manager.load_users()
         self.token_manager.load_tokens()

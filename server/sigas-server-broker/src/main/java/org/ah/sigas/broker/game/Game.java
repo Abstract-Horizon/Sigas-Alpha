@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.ah.sigas.broker.Broker;
+import org.ah.sigas.broker.game.Client.Direction;
 import org.ah.sigas.broker.message.Message;
 
 public class Game {
@@ -71,7 +72,7 @@ public class Game {
             } else {
                 Client destinationClient = clients.get(clientId);
                 if (destinationClient == null) {
-                    if (Broker.INFO) { client.log("Got server message for non-existent client '" + clientId + "'"); }
+                    if (Broker.INFO) { client.log(Direction.IN, "Got server message for non-existent client '" + clientId + "'"); }
                 } else {
                     destinationClient.sendMessage(message);
                 }

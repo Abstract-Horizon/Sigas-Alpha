@@ -9,12 +9,13 @@ from sigas_server_hub.utils import fast_random_hash, TOKEN_LENGTH, Permissions
 
 class Token:
     def __init__(self,
+                 token: str,
                  lifespan: float,
                  permissions: Optional[Permissions] = None,
                  note: str = "",
                  user_id: Optional[str] = None,
                  temporary: bool = False) -> None:
-        self._token = fast_random_hash(TOKEN_LENGTH)
+        self._token = token
         self._created_at = time.time()
         self._lifespan = lifespan
         self._valid = True
@@ -91,12 +92,16 @@ class TokenManager:
         self.tokens: dict[str, Token] = {}
         self.duplicates_and_invalid_tokens = 0
 
+    @staticmethod
+    def _new_token() -> str:
+        return fast_random_hash(TOKEN_LENGTH)
+
     def create_token(self,
                      lifespan: float,
                      permissions: Optional[Permissions] = None,
                      note: str = "",
                      temporary: bool = False) -> Token:
-        token = Token(lifespan, permissions=permissions, note=note, temporary=temporary)
+        token = Token(self._new_token(), lifespan, permissions=permissions, note=note, temporary=temporary)
         self.tokens[token.token] = token
         if not temporary:
             self._save_token(token)

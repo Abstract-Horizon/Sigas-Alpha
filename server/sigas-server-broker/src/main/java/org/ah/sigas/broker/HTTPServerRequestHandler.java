@@ -74,6 +74,7 @@ public class HTTPServerRequestHandler extends HTTPRequestHandler {
                             SelectionKey oldKey = inboundHandler.getAssociatedKey();
                             broker.closeChannel(oldKey);
                         }
+                        client.setHasInboundChannel(true);
 
                         key.attach(inboundHandler);
                         inboundHandler.open(key);
@@ -95,6 +96,7 @@ public class HTTPServerRequestHandler extends HTTPRequestHandler {
                             return;
                         }
 
+                        boolean existingHandler = false;
                         ClientHandler outboundHandler = client.getOutboundHandler();
                         if (outboundHandler == null) {
                             outboundHandler = new ClientOutboundHandlerImpl(broker, client);
@@ -102,10 +104,17 @@ public class HTTPServerRequestHandler extends HTTPRequestHandler {
                         } else {
                             SelectionKey oldKey = outboundHandler.getAssociatedKey();
                             broker.closeChannel(oldKey);
+                            existingHandler = true;
                         }
+                        client.setHasOutboundChannel(true);
 
                         key.attach(outboundHandler);
                         outboundHandler.open(key);
+
+                        if (existingHandler) {
+                            client.newOutboundConnection();
+                        }
+
                         if (Broker.DEBUG) { System.out.println(gameId + ":" + client.getClientId() + ":" + token + " Got outbound connection"); }
                     }
                     return;

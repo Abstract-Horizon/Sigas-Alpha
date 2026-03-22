@@ -26,6 +26,7 @@ class GameOptions:
         self.max_players: int = GameOptions.extract_int("max_players", kwargs, 2)
         self.allow_late_join: bool = GameOptions.extract_bool("allow_late_join", kwargs, False)
         self.heartbeat_period: int = GameOptions.extract_int("heartbeat_period", kwargs, 2)
+        self.max_queue_size: int = GameOptions.extract_int("max_queue_size", kwargs, 20)
 
         self.other_options = kwargs
 

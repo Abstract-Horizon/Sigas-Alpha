@@ -6,6 +6,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.WritableByteChannel;
 
 import org.ah.sigas.broker.game.Client;
+import org.ah.sigas.broker.game.Client.Direction;
 
 public class BaseClientHandler implements ClientHandler {
 
@@ -22,6 +23,8 @@ public class BaseClientHandler implements ClientHandler {
     @Override
     public SelectionKey getAssociatedKey() { return associatedKey; }
 
+    public Client getClient() { return client; }
+
     @Override
     public void open(SelectionKey associatedKey) {
         this.associatedKey = associatedKey;
@@ -33,7 +36,6 @@ public class BaseClientHandler implements ClientHandler {
         open = false;
     }
 
-
     @Override
     public void read(SelectionKey key, ReadableByteChannel channel) throws IOException {
         throw new UnsupportedOperationException();
@@ -44,12 +46,12 @@ public class BaseClientHandler implements ClientHandler {
         throw new UnsupportedOperationException();
     }
 
-    protected void log(String msg) {
-        client.log(msg, false);
+    protected void log(Direction direction, String msg) {
+        client.log(direction, msg, false);
     }
 
-    protected void log(String msg, boolean error) {
-        client.log(msg, error);
+    protected void log(Direction direction, String msg, boolean error) {
+        client.log(direction, msg, error);
     }
 
 }

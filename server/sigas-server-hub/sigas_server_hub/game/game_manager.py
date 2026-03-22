@@ -38,6 +38,7 @@ class GameOptions:
         self.max_players: int = GameOptions.extract_int("max_players", kwargs, 2)
         self.allow_late_join: bool = GameOptions.extract_bool("allow_late_join", kwargs, False)
         self.heartbeat_period: int = GameOptions.extract_int("heartbeat_period", kwargs, 2)
+        self.max_queue_size: int = GameOptions.extract_int("max_queue_size", kwargs, 20)
 
         self.other_options = kwargs
 
@@ -52,9 +53,9 @@ class GameOptions:
 
 
 class Game:
-    def __init__(self, game_manager: 'GameManager', game_name: str, master_player: Player) -> None:
+    def __init__(self, game_manager: 'GameManager', game_id: str, game_name: str, master_player: Player) -> None:
         self.game_manager = game_manager
-        self.game_id = "G_" + fast_random_hash(TOKEN_LENGTH)
+        self.game_id = game_id
         self.game_name = game_name
         self.server: Optional['Server'] = None
         self.master_player = master_player
@@ -137,8 +138,13 @@ class GameManager(ABC):
     def __init__(self) -> None:
         self.games: dict[str, Game] = {}
 
+    @staticmethod
+    def _new_game_id() -> str:
+        return "G_" + fast_random_hash(TOKEN_LENGTH)
+
     def create_game(self, game_name: str, master_player: Player) -> Game:
-        game = Game(self, game_name, master_player)
+        game_id = self._new_game_id()
+        game = Game(self, game_id, game_name, master_player)
         self.games[game.game_id] = game
         server = self.provision_server(game)
 

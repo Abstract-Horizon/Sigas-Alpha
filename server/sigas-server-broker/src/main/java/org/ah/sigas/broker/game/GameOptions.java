@@ -9,6 +9,7 @@ public class GameOptions {
     private int maxPlayers = 2;
     private boolean allowLateJoin = false;
     private int heartbeatPeriod = 2000;
+    private int maxQueueSize = 50;
 
     private Map<String, Object> other = new HashMap<String, Object>();
 
@@ -25,9 +26,12 @@ public class GameOptions {
         maxPlayers = getInt(json, "max_players", maxPlayers);
         allowLateJoin = getBoolean(json, "allow_late_join", allowLateJoin);
         heartbeatPeriod = getInt(json, "heartbeat_period", heartbeatPeriod);
+        maxQueueSize = getInt(json, "max_queue_size", maxQueueSize);
 
         other.putAll(json);
     }
+
+    public int getMaxQueueSize() { return maxQueueSize; }
 
     @SuppressWarnings("unused")
     private String getString(Map<String, Object> json, String name, String defaultValue) {

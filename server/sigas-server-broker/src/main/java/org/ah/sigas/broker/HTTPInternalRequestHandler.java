@@ -127,7 +127,7 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
 
             Game game = new Game(gameId, gameOptions);
             broker.getGames().put(gameId, game);
-            Client client = new Client(game, masterToken, id, alias, true);
+            Client client = new Client(game, masterToken, id, alias, true, gameOptions.getMaxQueueSize());
             game.addClient(client);
 
             if (Broker.INFO) { System.out.println(gameId + ":" + client.getClientId() + ":" + client.getToken() + " Game created."); }
@@ -190,7 +190,7 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
                 }
             }
 
-            Client client = new Client(game, token, id, alias, false);
+            Client client = new Client(game, token, id, alias, false, game.getGameOptions().getMaxQueueSize());
             game.addClient(client);
 
             if (Broker.INFO) { System.out.println(gameId + ":" + client.getClientId() + ":" + client.getToken() + " Added client to game"); }
@@ -201,6 +201,7 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
             // game.getMasterClient().sendMessage(joinedMessage);
             for (Client c : game.getClients().values()) {
                 if (c != client) {
+                    if (Broker.TRACE) { System.out.println(gameId + ":" + client.getClientId() + ":" + client.getToken() + " Send JOIN to " + c.getClientId()); }
                     c.sendMessage(joinedMessage);
                 }
             }
