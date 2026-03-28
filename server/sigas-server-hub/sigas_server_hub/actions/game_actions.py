@@ -4,7 +4,7 @@ from typing import Optional
 from flask import Response, g
 
 from sigas_server_hub.flask_apps import external_route, permissions
-from sigas_server_hub.game.game_manager import GameManager, Player
+from sigas_server_hub.game.game_manager import GameManager, Player, GameOptions
 from sigas_server_hub.tokens import Token
 from sigas_server_hub.users import UserManager, User
 from sigas_server_hub.web_actions import WebActions
@@ -41,7 +41,8 @@ class GameActions(WebActions):
         master_player = Player(game_access_token, alias)
 
         game_name = body["name"]
-        game = self.game_manager.create_game(game_name, master_player)
+        game_options = GameOptions(**body["options"])
+        game = self.game_manager.create_game(game_name, master_player, game_options)
 
         return self.json_response({
             "game_id": game.game_id,

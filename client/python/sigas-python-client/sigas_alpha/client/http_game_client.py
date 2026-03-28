@@ -8,7 +8,7 @@ from typing import Any, Generator, Optional, Callable
 import requests
 
 from sigas_alpha.game.game import Game, GameOptions
-from sigas_alpha.message import create_message, MessageExtension, HeloMessage, HeartBeatMessage, ClientReconnectedMessage, JoinedMessage
+from sigas_alpha.message import create_message, MessageExtension, HeloMessage, HeartBeatMessage, ClientReconnectedMessage, JoinedMessage, ClientDisconnectedMessage
 from sigas_alpha.message.system_messages import PlayerListMessage
 from sigas_alpha.player import Player
 
@@ -191,11 +191,15 @@ class Callbacks:
             on_missed_heartbeat: Optional[Callable[['HTTPGameClient'], None]] = None,
             on_request_for_complete_game_state: Optional[Callable[['HTTPGameClient', str], None]] = None,
             on_player_joined: Optional[Callable[['HTTPGameClient', Player], None]] = None,
+            on_player_reconnected: Optional[Callable[['HTTPGameClient', Player], None]] = None,
+            on_player_disconnected: Optional[Callable[['HTTPGameClient', Player], None]] = None,
     ) -> None:
         self.on_message_received = on_message_received
         self.on_missed_heartbeat = on_missed_heartbeat
         self.on_request_for_complete_game_state = on_request_for_complete_game_state
         self.on_player_joined = on_player_joined
+        self.on_player_reconnected = on_player_reconnected
+        self.on_player_disconnected = on_player_disconnected
 
 
 class HTTPGameClient:
@@ -329,17 +333,35 @@ class HTTPGameClient:
             return None
 
     def _receive_message(self, message: MessageExtension) -> None:
+        def send_player_list(client_id) -> None:
+            response_json = {"players": [{"player_id": p.player_id, "alias": p.alias} for p in self.game.players.values()]}
+            player_list_message = PlayerListMessage(response_json, client_id=client_id)
+            self.send_message(player_list_message)
+
         if isinstance(message, JoinedMessage):
+            if self.game.is_master():
+                send_player_list(message.client_id)
             player = Player(message.client_id, message.json_body["alias"])
             logger.warning(f"Client: {self.game.game_id}:{self.player.player_id}: received join for {player.player_id} ")
             self.game.players[message.client_id] = player
+            self.game.players[message.client_id].connected = True
             if self.callbacks.on_player_joined is not None:
                 self.callbacks.on_player_joined(self, player)
-
-        if self.game.is_master() and (isinstance(message, JoinedMessage) or isinstance(message, ClientReconnectedMessage)):
-            response_json = {"players": [{"player_id": p.player_id, "alias": p.alias} for p in self.game.players.values()]}
-            player_list_message = PlayerListMessage(response_json, client_id=message.client_id)
-            self.send_message(player_list_message)
+        elif isinstance(message, ClientReconnectedMessage):
+            if self.game.is_master():
+                # Keep previously disconnected player in the loop who is in there. Callback later will pick up synchronising game state.
+                send_player_list(message.client_id)
+            player = self.game.players[message.client_id]
+            self.game.players[message.client_id].connected = True
+            logger.warning(f"Client: {self.game.game_id}:{self.player.player_id}: received reconnected for {player.player_id} ")
+            if self.callbacks.on_player_reconnected is not None:
+                self.callbacks.on_player_reconnected(self, player)
+        elif isinstance(message, ClientDisconnectedMessage):
+            player = self.game.players[message.client_id]
+            self.game.players[message.client_id].connected = True
+            logger.warning(f"Client: {self.game.game_id}:{self.player.player_id}: received disconnected for {player.player_id} ")
+            if self.callbacks.on_player_disconnected is not None:
+                self.callbacks.on_player_disconnected(self, player)
 
         if isinstance(message, PlayerListMessage):
             message.apply_to_game(self.game)

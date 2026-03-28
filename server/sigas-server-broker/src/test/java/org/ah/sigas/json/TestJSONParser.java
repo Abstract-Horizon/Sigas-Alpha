@@ -60,27 +60,36 @@ public class TestJSONParser {
         JSONParser parser = new JSONParser(
 """
 {
-  "str": "str",
-  "int": 5,
-  "float": 1.5,
-  "true": true,
-  "false": false,
-  "null": null,
-  "obj": {
-    "name": "myname"
+  "master_token": "AAAAAAAASe_iF4MA",
+  "client_id": "01",
+  "alias": "main_alias",
+  "float": 1.2,
+  "bool_true": true,
+  "bool_false": false,
+  "options": {
+    "min_players": 2,
+    "max_players": 4,
+    "allow_late_join": false
   }
 }
 """);
 
         parser.parse(res);
 
-        assertEquals("str", res.get("str"));
-        assertEquals(5, res.get("int"));
-        assertEquals(1.5, res.get("float"));
-        assertEquals(true, res.get("true"));
-        assertEquals(false, res.get("false"));
-        assertNull(res.get("null"));
-        assertEquals("myname", ((Map<String, Object>)res.get("obj")).get("name"));
+        assertEquals("AAAAAAAASe_iF4MA", res.get("master_token"));
+        assertEquals("01", res.get("client_id"));
+        assertEquals("main_alias", res.get("alias"));
+        assertEquals(1.2, res.get("float"));
+        assertEquals(true, res.get("bool_true"));
+        assertEquals(false, res.get("bool_false"));
+        assertEquals(7, res.size());
+
+        Map<String, Object> options = (Map<String, Object>)res.get("options");
+
+        assertEquals(2, options.get("min_players"));
+        assertEquals(4, options.get("max_players"));
+        assertEquals(false, options.get("allow_late_join"));
+        assertEquals(3, options.size());
     }
 
     @Test public void javaObjectMapTest() throws ParserError {

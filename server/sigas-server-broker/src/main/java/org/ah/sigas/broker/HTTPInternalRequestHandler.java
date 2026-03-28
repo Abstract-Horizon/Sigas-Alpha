@@ -11,7 +11,6 @@ import java.util.Map;
 import org.ah.sigas.broker.game.Client;
 import org.ah.sigas.broker.game.Game;
 import org.ah.sigas.broker.game.GameOptions;
-import org.ah.sigas.broker.message.JoinedMessage;
 import org.ah.sigas.json.JSONParser;
 
 
@@ -96,6 +95,11 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
     @SuppressWarnings("unchecked")
     public void createGame(SelectionKey key, String gameId, String body) {
         try {
+            if (Broker.TRACE && body != null) {
+                System.out.println("Game Options: -------------------------------");
+                System.out.println("    body: " +  body);
+                System.out.println("-------------------------------");
+            }
             JSONParser parser = new JSONParser(body);
 
             Map<String, Object> res = new HashMap<>();
@@ -123,7 +127,15 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
             }
 
             GameOptions gameOptions = new GameOptions();
-            gameOptions.fromJSON((Map<String, Object>)res.get("options"));
+            Map<String, Object> gameOptionsMap = (Map<String, Object>)res.get("options");
+            if (Broker.TRACE && gameOptionsMap != null) {
+                System.out.println("Game Options: -------------------------------");
+                for (Map.Entry<String, Object> entry : gameOptionsMap.entrySet()) {
+                    System.out.println("    " + entry.getKey() + ": " + entry.getValue());
+                }
+                System.out.println("-------------------------------");
+            }
+            gameOptions.fromJSON(gameOptionsMap);
 
             Game game = new Game(gameId, gameOptions);
             broker.getGames().put(gameId, game);
@@ -197,14 +209,7 @@ public class HTTPInternalRequestHandler extends HTTPRequestHandler {
 
             createSimpleResponse(key, 204, "OK");
 
-            JoinedMessage joinedMessage = new JoinedMessage(client.getClientId(), client.getAlias());
-            // game.getMasterClient().sendMessage(joinedMessage);
-            for (Client c : game.getClients().values()) {
-                if (c != client) {
-                    if (Broker.TRACE) { System.out.println(gameId + ":" + client.getClientId() + ":" + client.getToken() + " Send JOIN to " + c.getClientId()); }
-                    c.sendMessage(joinedMessage);
-                }
-            }
+            client.clientJoined();
         } catch (ErrorAlreadySent ignore) {
         } catch (Exception e) {
             handleError(key, e);

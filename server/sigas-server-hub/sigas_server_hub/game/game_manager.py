@@ -39,6 +39,8 @@ class GameOptions:
         self.allow_late_join: bool = GameOptions.extract_bool("allow_late_join", kwargs, False)
         self.heartbeat_period: int = GameOptions.extract_int("heartbeat_period", kwargs, 2)
         self.max_queue_size: int = GameOptions.extract_int("max_queue_size", kwargs, 20)
+        self.player_status_to_all: bool = GameOptions.extract_bool("player_status_to_all", kwargs, True)
+        self.disconnected_client_timeout: int = GameOptions.extract_int("disconnected_client_timeout", kwargs, 60)
 
         self.other_options = kwargs
 
@@ -47,13 +49,16 @@ class GameOptions:
             "min_players": self.min_players,
             "max_players": self.max_players,
             "allow_late_join": self.allow_late_join,
+            "max_queue_size": self.max_queue_size,
+            "player_status_to_all": self.player_status_to_all,
+            "disconnected_client_timeout": self.disconnected_client_timeout,
             **self.other_options
         }
         return res
 
 
 class Game:
-    def __init__(self, game_manager: 'GameManager', game_id: str, game_name: str, master_player: Player) -> None:
+    def __init__(self, game_manager: 'GameManager', game_id: str, game_name: str, master_player: Player, game_options: GameOptions) -> None:
         self.game_manager = game_manager
         self.game_id = game_id
         self.game_name = game_name
@@ -64,7 +69,7 @@ class Game:
         self.master_player.master_player = True
         self.players: dict[str, Player] = {}
         self.next_player_id = 2
-        self.game_options = GameOptions()
+        self.game_options = game_options
 
     def close(self) -> None:
         self.server.remove_game(self)
@@ -142,9 +147,9 @@ class GameManager(ABC):
     def _new_game_id() -> str:
         return "G_" + fast_random_hash(TOKEN_LENGTH)
 
-    def create_game(self, game_name: str, master_player: Player) -> Game:
+    def create_game(self, game_name: str, master_player: Player, game_options: GameOptions) -> Game:
         game_id = self._new_game_id()
-        game = Game(self, game_id, game_name, master_player)
+        game = Game(self, game_id, game_name, master_player, game_options)
         self.games[game.game_id] = game
         server = self.provision_server(game)
 

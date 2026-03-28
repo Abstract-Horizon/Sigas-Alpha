@@ -27,6 +27,8 @@ class GameOptions:
         self.allow_late_join: bool = GameOptions.extract_bool("allow_late_join", kwargs, False)
         self.heartbeat_period: int = GameOptions.extract_int("heartbeat_period", kwargs, 2)
         self.max_queue_size: int = GameOptions.extract_int("max_queue_size", kwargs, 20)
+        self.player_status_to_all: int = GameOptions.extract_int("player_status_to_all", kwargs, True)
+        self.disconnected_client_timeout: int = GameOptions.extract_int("disconnected_client_timeout", kwargs, 60)
 
         self.other_options = kwargs
 
@@ -35,6 +37,9 @@ class GameOptions:
             "min_players": self.min_players,
             "max_players": self.max_players,
             "allow_late_join": self.allow_late_join,
+            "max_queue_size": self.max_queue_size,
+            "player_status_to_all": self.player_status_to_all,
+            "disconnected_client_timeout": self.disconnected_client_timeout,
             **self.other_options
         }
         return res

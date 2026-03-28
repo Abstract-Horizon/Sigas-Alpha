@@ -1,12 +1,15 @@
 package org.ah.sigas.broker.game;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.ah.sigas.broker.Broker;
 import org.ah.sigas.broker.game.Client.Direction;
 import org.ah.sigas.broker.message.Message;
+
 
 public class Game {
 
@@ -25,6 +28,7 @@ public class Game {
 
     private State state = State.CREATED;
     private GameOptions gameOptions;
+    private boolean haveLeft = false;
 
     public Game(String gameId, GameOptions gameOptions) {
         this.gameId = gameId;
@@ -76,6 +80,25 @@ public class Game {
                 } else {
                     destinationClient.sendMessage(message);
                 }
+            }
+        }
+    }
+
+    public void checkForTimeout(long now) {
+        // TODO is this too premature?
+        if (haveLeft) {
+            String[] clientIds = clients.values().stream().filter(c -> c.getState() == Client.State.LEFT).map(c -> c.getClientId()).toArray(String[]::new);
+            for (String clientId : clientIds) {
+                clients.remove(clientId);
+            }
+            haveLeft = false;
+        }
+
+        long clientTimeout = getGameOptions().getDisconnectedClientTimeout();
+        for (Client client : clients.values()) {
+            if (now - client.getLastActivity() > clientTimeout) {
+                client.clientLeft();
+                haveLeft = true;
             }
         }
     }

@@ -163,11 +163,17 @@ public class JSONParser {
     public void value() throws ParserError {
         int t = nextToken();
         if (t == TOKEN_OPEN_CURLY_BRACE) {
+            Object prevObject = currentObject;
+            currentObject = new HashMap<>();
             prevToken = t;
             object();
+            currentObject = prevObject;
         } else if (t == TOKEN_OPEN_SQUARE_BRACE) {
+            Object prevObject = currentObject;
+            currentObject = new ArrayList<>();
             prevToken = t;
             array();
+            currentObject = prevObject;
         } else if (t == TOKEN_STRING) {
             resultValue = tokenValue.toString();
         } else if (t == TOKEN_INTEGER) {

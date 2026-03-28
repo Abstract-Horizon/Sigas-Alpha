@@ -4,8 +4,10 @@ from typing import cast, Sequence
 
 import time
 
-from hamcrest import assert_that, contains_inanyorder
+from hamcrest import assert_that, contains_inanyorder, has_item, has_items
 
+from sigas_alpha.game.game import GameOptions
+from sigas_alpha.message import PrivateMsgMessage, ClientDisconnectedMessage, ClientReconnectedMessage
 from sigas_alpha.player import Player
 from tests.sigas_alpha.client.server_setup import TestServerSetup
 
@@ -122,5 +124,70 @@ class TestJoinAndLeave(unittest.TestCase):
             contains_inanyorder("main_alias", "player1_alias", "player2_alias"),
             f"Got {self.player2_client.game.players.values()}"
         )
+
+        print("Done")
+
+    def test_leave_drop_and_rejoin_messages(self) -> None:
+        # This is when broker removes all messages as they piled too high
+        game = self.test_server_setup.clients["master"].create_game(
+            "test_game", "main_alias",
+            GameOptions(max_queue_size=5)
+        )
+        time.sleep(0.1)
+        logger.warning(f"----------------- adding player1 -----------")
+        self.player1_client.join_name(game.game_id, "player1_alias")
+        time.sleep(1)
+        logger.warning(f"----------------- closing player1 -----------")
+        self.player1_client.close()
+        logger.warning(f"----------------- closed player1 -----------")
+
+        # send messages to player1
+        for i in range(11):
+            self.master_client.http_game_client.send_message(PrivateMsgMessage({
+              "body": "hello"
+            }, client_id=self.player1_client.http_game_client.player.player_id))
+
+        time.sleep(2)
+        logger.warning(f"----------------- adding player2 -----------")
+        self.player2_client.join_name(game.game_id, "player2_alias")
+        time.sleep(2)
+        logger.warning(f"----------------- rejoining player1 -----------")
+        self.player1_client.rejoin()
+
+        time.sleep(1)
+
+        print("Waiting up to 10s...")
+        started_time = time.time()
+        while (time.time() - started_time < 10
+               and (len(self.master_client.game.players) < 3
+                    or len(self.player1_client.game.players) < 3
+                    or len(self.player2_client.game.players) < 3)):
+            time.sleep(0.1)
+
+        assert_that(
+            cast(Sequence, player_aliases(cast(Sequence, self.master_client.game.players.values()))),
+            contains_inanyorder("main_alias", "player1_alias", "player2_alias"),
+            f"Got {self.master_client.game.players.values()}"
+        )
+
+        assert_that(
+            cast(Sequence, player_aliases(cast(Sequence, self.player1_client.game.players.values()))),
+            contains_inanyorder("main_alias", "player1_alias", "player2_alias"),
+            f"Got {self.player1_client.game.players.values()}"
+        )
+
+        assert_that(
+            cast(Sequence, player_aliases(cast(Sequence, self.player2_client.game.players.values()))),
+            contains_inanyorder("main_alias", "player1_alias", "player2_alias"),
+            f"Got {self.player2_client.game.players.values()}"
+        )
+
+        assert_that(cast(Sequence, self.master_client.messages),
+                    has_item(ClientDisconnectedMessage(client_id=self.player1_client.http_game_client.player.player_id)),
+                    f"Got {self.master_client.messages}")
+
+        assert_that(cast(Sequence, self.master_client.messages),
+                    has_item(ClientReconnectedMessage(client_id=self.player1_client.http_game_client.player.player_id)),
+                    f"Got {self.master_client.messages}")
 
         print("Done")

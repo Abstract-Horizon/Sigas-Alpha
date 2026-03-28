@@ -20,6 +20,8 @@ import org.ah.sigas.broker.game.Game;
 
 public class Broker {
 
+    public static long CHECK_FOR_TIMEOUT = 500;
+
     public static boolean INFO = true;
     public static boolean DEBUG = true;
     public static boolean TRACE = true;
@@ -78,10 +80,10 @@ public class Broker {
             System.exit(1);
         }
 
+        long lastCheckedForTimeout = System.currentTimeMillis();
         while (!doStop) {
             try {
-
-                selector.select(500);
+                selector.select(CHECK_FOR_TIMEOUT);
                 Set<SelectionKey> keys = selector.selectedKeys();
 
                 if (!keys.isEmpty()) {
@@ -107,6 +109,12 @@ public class Broker {
                             e.printStackTrace();
                             closeChannel(key);
                         }
+                    }
+                }
+                long now = System.currentTimeMillis();
+                if (now - lastCheckedForTimeout > CHECK_FOR_TIMEOUT) {
+                    for (Game game : games.values()) {
+                        game.checkForTimeout(now);
                     }
                 }
             } catch (Throwable e) {
@@ -224,4 +232,5 @@ public class Broker {
             return "closed channel " + channel;
         }
     }
+
 }
